@@ -1,12 +1,15 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { createCommunity } from '@/actions/communities'
-import { useRouter } from 'next/navigation'
-import { ShieldPlus } from 'lucide-react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { ShieldPlus, ArrowRight } from 'lucide-react'
 
-export default function SetupPage() {
+function SetupForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const callback = searchParams.get('callback') // Extraemos la URL de destino
+  
   const [error, setError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
 
@@ -20,15 +23,32 @@ export default function SetupPage() {
       setError(result.error)
       setIsPending(false)
     } else if (result?.success) {
-      // Si todo fue bien, forzamos la recarga y navegamos al Tablón
       router.refresh()
-      router.push('/')
+      // Si por lo que sea decidieron crear la comunidad, los mandamos a su destino o al inicio
+      router.push(callback || '/') 
     }
   }
 
   return (
-    <div className="max-w-2xl mx-auto mt-10">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="max-w-2xl mx-auto mt-10 p-4">
+      
+      {/* Banner Salvavidas: Si detecta que el usuario tiene una invitación pendiente */}
+      {callback && callback.includes('/invite/') && (
+        <div className="mb-6 bg-indigo-50 border border-indigo-200 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm animate-fade-in">
+          <div>
+            <h3 className="font-bold text-indigo-900 text-lg">Tienes una invitación pendiente</h3>
+            <p className="text-sm text-indigo-700">No necesitas crear una comunidad nueva si vas a unirte a otra.</p>
+          </div>
+          <button 
+            onClick={() => router.push(callback)}
+            className="flex items-center justify-center w-full sm:w-auto gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+          >
+            Aceptar mi invitación <ArrowRight size={18}/>
+          </button>
+        </div>
+      )}
+
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="bg-blue-600 p-8 text-center text-white">
           <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
             <ShieldPlus size={32} className="text-white" />
@@ -41,7 +61,7 @@ export default function SetupPage() {
 
         <form action={handleSubmit} className="p-8 space-y-6">
           {error && (
-            <div className="rounded-md bg-red-50 p-4 text-sm text-red-700 font-medium">
+            <div className="rounded-xl bg-red-50 p-4 text-sm text-red-700 font-medium border border-red-100">
               {error}
             </div>
           )}
@@ -56,27 +76,18 @@ export default function SetupPage() {
               type="text"
               required
               placeholder="Ej. Los Galácticos del Domingo"
-              className="block w-full rounded-lg border-0 py-3 px-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+              className="block w-full rounded-xl border-0 py-3.5 px-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
             />
-            <p className="mt-2 text-xs text-gray-500">
-              Este nombre será visible para todos los miembros que invites.
-            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-6">
             <div>
               <label htmlFor="primaryColor" className="block text-sm font-semibold text-gray-900 mb-2">
                 Color Principal
               </label>
               <div className="flex items-center gap-3">
-                <input
-                  id="primaryColor"
-                  name="primaryColor"
-                  type="color"
-                  defaultValue="#2563eb"
-                  className="h-10 w-16 rounded cursor-pointer border-0 p-1"
-                />
-                <span className="text-xs text-gray-500">Equipación local</span>
+                <input id="primaryColor" name="primaryColor" type="color" defaultValue="#2563eb" className="h-10 w-16 rounded-lg cursor-pointer border-0 p-1" />
+                <span className="text-xs text-gray-500 font-medium">Equipación local</span>
               </div>
             </div>
             
@@ -85,23 +96,17 @@ export default function SetupPage() {
                 Color Secundario
               </label>
               <div className="flex items-center gap-3">
-                <input
-                  id="secondaryColor"
-                  name="secondaryColor"
-                  type="color"
-                  defaultValue="#ffffff"
-                  className="h-10 w-16 rounded cursor-pointer border-0 p-1 ring-1 ring-inset ring-gray-300"
-                />
-                <span className="text-xs text-gray-500">Equipación visitante</span>
+                <input id="secondaryColor" name="secondaryColor" type="color" defaultValue="#ffffff" className="h-10 w-16 rounded-lg cursor-pointer border-0 p-1 ring-1 ring-inset ring-gray-200" />
+                <span className="text-xs text-gray-500 font-medium">Equipación visitante</span>
               </div>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-gray-100">
+          <div className="pt-6 border-t border-gray-100">
             <button
               type="submit"
               disabled={isPending}
-              className="flex w-full justify-center items-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="flex w-full justify-center items-center gap-2 rounded-xl bg-blue-600 px-4 py-4 text-sm font-bold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isPending ? 'Creando...' : 'Fundar Comunidad'}
             </button>
@@ -109,5 +114,14 @@ export default function SetupPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+// Next.js exige envolver useSearchParams en Suspense en componentes de cliente
+export default function SetupPage() {
+  return (
+    <Suspense fallback={<div className="text-center mt-20 text-gray-400 font-medium animate-pulse">Cargando panel...</div>}>
+      <SetupForm />
+    </Suspense>
   )
 }

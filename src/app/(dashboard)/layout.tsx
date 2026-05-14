@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import Sidebar from '@/components/Sidebar' // <-- Importamos el componente
 
 export default async function DashboardLayout({
   children,
@@ -44,12 +45,15 @@ export default async function DashboardLayout({
   // Casteo seguro para el futuro uso de community_id
   const membership = membershipData as unknown as { community_id: string }
 
-  // 4. Si pasa todos los controles, renderizamos el Dashboard
+  // 4. Si pasa todos los controles, renderizamos el Dashboard con el Sidebar
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-gray-50 flex">
       
-      {/* Contenedor principal */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+      {/* Añadimos el Menú Lateral */}
+      <Sidebar />
+
+      {/* Contenedor principal: añadimos ml-64 para dejarle espacio al Sidebar */}
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto ml-64">
         <div className="max-w-7xl mx-auto">
           {children}
         </div>

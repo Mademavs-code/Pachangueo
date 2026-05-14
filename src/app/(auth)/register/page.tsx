@@ -1,10 +1,14 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { register } from '@/actions/auth'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 
-export default function RegisterPage() {
+function RegisterForm() {
+  const searchParams = useSearchParams()
+  const callback = searchParams.get('callback') || '/'
+
   const [error, setError] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
 
@@ -31,6 +35,9 @@ export default function RegisterPage() {
         </div>
 
         <form action={handleSubmit} className="mt-8 space-y-6">
+          {/* CAMBIO CLAVE: Input oculto para el redireccionamiento posterior */}
+          <input type="hidden" name="callback" value={callback} />
+
           {error && (
             <div className="rounded-md bg-red-50 p-4 text-sm text-red-700 font-medium">
               {error}
@@ -97,15 +104,29 @@ export default function RegisterPage() {
               {isPending ? 'Creando cuenta...' : 'Registrarse'}
             </button>
           </div>
+          
         </form>
 
         <p className="text-center text-sm text-gray-600">
           ¿Ya tienes cuenta?{' '}
-          <Link href="/login" className="font-semibold text-blue-600 hover:text-blue-500 transition-colors">
+          {/* CAMBIO CLAVE: Mantener el callback en el enlace al login */}
+          <Link 
+            href={`/login${callback !== '/' ? `?callback=${callback}` : ''}`} 
+            className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+          >
             Inicia sesión
           </Link>
         </p>
       </div>
     </div>
+  )
+}
+
+// Envoltorio requerido por Next.js
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-gray-50"><div className="animate-pulse font-medium text-gray-500">Cargando...</div></div>}>
+      <RegisterForm />
+    </Suspense>
   )
 }
