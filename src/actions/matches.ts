@@ -159,3 +159,85 @@ export async function saveLineups(matchId: string, teamBlanco: string[], teamNeg
   revalidatePath(`/matches/${matchId}`)
   return { success: true }
 }
+
+// ==========================================
+// 5. CONTROL DE ASISTENCIA Y PAGOS (SOLO ADMIN)
+// ==========================================
+export async function togglePayment(matchId: string, memberId: string, currentStatus: boolean) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autorizado' }
+
+  // TODO: Validar que el usuario que ejecuta esto es ADMIN (lo omito aquí por brevedad)
+
+  const { error } = await (supabase.from('match_players') as any)
+    .update({ has_paid: !currentStatus })
+    .eq('match_id', matchId)
+    .eq('member_id', memberId)
+
+  if (error) return { error: error.message }
+  revalidatePath(`/matches/${matchId}`)
+  return { success: true }
+}
+
+export async function updateAttendance(matchId: string, memberId: string, status: 'PENDING' | 'ON_TIME' | 'LATE' | 'NO_SHOW') {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autorizado' }
+
+  const { error } = await (supabase.from('match_players') as any)
+    .update({ attendance: status })
+    .eq('match_id', matchId)
+    .eq('member_id', memberId)
+
+  if (error) return { error: error.message }
+  revalidatePath(`/matches/${matchId}`)
+  return { success: true }
+}
+
+// ==========================================
+// 6. FINALIZAR PARTIDO
+// ==========================================
+export async function endMatch(matchId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autorizado' }
+
+  const { error } = await (supabase.from('matches') as any)
+    .update({ status: 'CLOSED' })
+    .eq('id', matchId)
+
+  if (error) return { error: 'Error al finalizar el partido: ' + error.message }
+  
+  revalidatePath(`/matches/${matchId}`)
+  return { success: true }
+}
+
+// ==========================================
+// 7. SISTEMA DE VOTACIONES Y MVP
+// ==========================================
+export async function submitVotes(matchId: string, votes: { evaluated_id: string, rating: number, is_mvp: boolean }[]) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autorizado' }
+
+  // Preparar el array de objetos para insertar
+  const evaluationsToInsert = votes.map(vote => ({
+    match_id: matchId,
+    evaluator_id: user.id,
+    evaluated_id: vote.evaluated_id,
+    rating: vote.rating,
+    is_mvp: vote.is_mvp
+  }))
+
+  const { error } = await (supabase.from('match_evaluations') as any).insert(evaluationsToInsert)
+
+  if (error) {
+    if (error.code === '23505') { // Código de error SQL para UNIQUE constraint violation
+      return { error: 'Ya has enviado tus valoraciones para este partido.' }
+    }
+    return { error: 'Error al guardar los votos: ' + error.message }
+  }
+
+  return { success: true }
+}

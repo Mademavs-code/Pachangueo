@@ -26,7 +26,7 @@ export async function createCommunity(formData: FormData) {
   
   const { data: profileData } = await supabase
     .from('profiles')
-    .select('id, alias') // <--- AHORA PEDIMOS TAMBIÉN EL ALIAS
+    .select('id, alias')
     .eq('id', user.id)
     .single()
 
@@ -90,5 +90,43 @@ export async function createCommunity(formData: FormData) {
 
   // 5. Finalización
   revalidatePath('/', 'layout')
-  return { success: true } // Devolvemos el control al navegador
+  return { success: true }
+}
+
+export async function updateCommunitySettings(formData: FormData) {
+  const supabase = await createClient()
+  
+  const communityId = formData.get('community_id') as string
+  const name = formData.get('name') as string
+  const primaryColor = formData.get('primaryColor') as string
+  const secondaryColor = formData.get('secondaryColor') as string
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autorizado' }
+
+  // Validar rol ADMIN (Casteo explícito para evitar error never en role)
+  const { data: membershipData } = await supabase
+    .from('community_members')
+    .select('role')
+    .eq('community_id', communityId)
+    .eq('profile_id', user.id)
+    .single()
+
+  const membership = membershipData as { role: string } | null
+
+  if (!membership || membership.role !== 'ADMIN') return { error: 'No autorizado' }
+
+  // Actualizar casteando la tabla a any (como en matches.ts) para evitar el error never en update
+  const { error } = await (supabase.from('communities') as any)
+    .update({ 
+      name, 
+      primary_color: primaryColor, 
+      secondary_color: secondaryColor 
+    })
+    .eq('id', communityId)
+
+  if (error) return { error: 'Error al actualizar la comunidad' }
+
+  revalidatePath('/', 'layout') 
+  return { success: true }
 }

@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Home, Trophy, Users, Settings, LogOut } from 'lucide-react'
 
-// 1. Definimos las interfaces para que TypeScript sepa exactamente qué estamos leyendo
+// 1. Definimos las interfaces
 interface Community {
   id: string;
   name: string;
@@ -11,7 +11,7 @@ interface Community {
 interface Membership {
   role: string;
   community_id: string;
-  communities: Community | null; // Supabase devuelve un objeto o null en relaciones 1:1
+  communities: Community | null; 
 }
 
 interface Profile {
@@ -25,7 +25,7 @@ export default async function Sidebar() {
   
   if (!user) return null
 
-  // 2. Obtener el perfil con casting explícito
+  // 2. Obtener el perfil
   const { data: profileData } = await supabase
     .from('profiles')
     .select('id, alias')
@@ -34,8 +34,7 @@ export default async function Sidebar() {
 
   const profile = profileData as Profile | null
 
-  // 3. Obtener membresías. 
-  // Nota: En Supabase, cuando haces un join, el resultado es un objeto anidado.
+  // 3. Obtener membresías
   const { data: membershipsData } = await supabase
     .from('community_members')
     .select(`
@@ -45,21 +44,22 @@ export default async function Sidebar() {
     `)
     .eq('profile_id', user.id)
 
-  // Casteamos el resultado a nuestro array de interfaces
   const memberships = (membershipsData as unknown as Membership[]) || []
   
-  // Determinamos la comunidad activa (la primera de la lista por ahora)
   const activeMembership = memberships[0]
   const activeCommunity = activeMembership?.communities
 
   return (
-    <aside className="w-64 bg-gray-900 text-white min-h-screen flex flex-col fixed left-0 top-0 z-50">
+    <aside className="w-64 bg-gray-900 text-white min-h-screen flex flex-col fixed left-0 top-0 z-50 border-r border-gray-800">
+      
       {/* Selector de Comunidad */}
       <div className="p-6 border-b border-gray-800">
         <p className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-3">Tu Comunidad</p>
-        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-3 flex items-center justify-between group cursor-pointer hover:border-blue-500/50 transition-all">
+        {/* Cambiamos el borde hover por la variable primaria */}
+        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-3 flex items-center justify-between group cursor-pointer hover:border-[var(--color-primary)] transition-all">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex-shrink-0 flex items-center justify-center font-black text-xs">
+            {/* Cambiamos bg-blue-600 por la variable dinámica */}
+            <div className="w-8 h-8 rounded-lg bg-[var(--color-primary)] flex-shrink-0 flex items-center justify-center font-black text-xs text-white shadow-sm">
               {activeCommunity?.name?.charAt(0) || '?'}
             </div>
             <span className="font-bold truncate text-sm">
@@ -86,7 +86,8 @@ export default async function Sidebar() {
       {/* User Footer */}
       <div className="p-4 border-t border-gray-800 bg-gray-900/50">
         <div className="flex items-center gap-3 p-2">
-          <div className="w-9 h-9 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-full flex items-center justify-center font-bold text-white shadow-lg">
+          {/* Cambiamos el from-blue-600 por from-[var(--color-primary)] */}
+          <div className="w-9 h-9 bg-gradient-to-tr from-[var(--color-primary)] to-gray-700 rounded-full flex items-center justify-center font-bold text-white shadow-lg">
             {profile?.alias?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 overflow-hidden">
@@ -105,14 +106,14 @@ export default async function Sidebar() {
   )
 }
 
-// Componente auxiliar para los enlaces de navegación con estilos consistentes
 function NavLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
   return (
     <Link 
       href={href} 
       className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition-all group"
     >
-      <span className="group-hover:scale-110 transition-transform">{icon}</span>
+      {/* Al pasar el ratón por encima, el icono coge el color principal */}
+      <span className="group-hover:scale-110 group-hover:text-[var(--color-primary)] transition-all">{icon}</span>
       <span className="text-sm font-semibold">{label}</span>
     </Link>
   )

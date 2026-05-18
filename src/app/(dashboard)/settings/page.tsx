@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Settings, Shield, Link as LinkIcon } from 'lucide-react'
+import { Settings, Shield, Link as LinkIcon, Palette } from 'lucide-react'
 import InviteLinkBox from './InviteLinkBox'
+import { updateCommunitySettings } from '@/actions/communities'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -10,7 +11,7 @@ export default async function SettingsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // 2. Obtener el perfil (CORREGIDO: Casteo explícito para evitar el error 'never')
+  // 2. Obtener el perfil
   const { data: profileData } = await supabase
     .from('profiles')
     .select('id')
@@ -21,24 +22,30 @@ export default async function SettingsPage() {
   
   if (!profile) redirect('/setup')
 
-  // 3. Buscar la comunidad donde el usuario es ADMIN
+  // 3. Buscar la comunidad donde el usuario es ADMIN (¡AHORA PEDIMOS LOS COLORES!)
   const { data: membershipData } = await supabase
     .from('community_members')
     .select(`
       community_id,
       role,
-      communities ( id, name, invite_token )
+      communities ( id, name, invite_token, primary_color, secondary_color )
     `)
-    .eq('profile_id', profile.id) // <-- ¡Aquí ya no te dará el error!
+    .eq('profile_id', profile.id)
     .eq('role', 'ADMIN')
     .limit(1)
     .single()
 
-  // Casteos para evitar errores de TypeScript en la membresía
-  type CommunityInfo = { id: string, name: string, invite_token: string }
+  // Actualizamos el tipo para que acepte los colores
+  type CommunityInfo = { 
+    id: string, 
+    name: string, 
+    invite_token: string, 
+    primary_color: string, 
+    secondary_color: string 
+  }
   const membership = membershipData as { community_id: string, role: string, communities: CommunityInfo } | null
 
-  // Si no es admin de ninguna comunidad, lo devolvemos al inicio
+  // Si no es admin, lo devolvemos al inicio
   if (!membership || !membership.communities) {
     redirect('/')
   }
@@ -76,14 +83,64 @@ export default async function SettingsPage() {
           </div>
         </div>
         
-        {/* Inyectamos el componente interactivo con el token de la BD */}
         {community.invite_token ? (
           <InviteLinkBox token={community.invite_token} />
         ) : (
           <div className="bg-orange-50 border border-orange-200 text-orange-800 p-4 rounded-xl text-sm font-medium">
-            ⚠️ Tu comunidad aún no tiene un token de invitación generado. Por favor, contacta con soporte o ejecuta el script de actualización en la base de datos.
+            ⚠️ Tu comunidad aún no tiene un token de invitación generado.
           </div>
         )}
+      </div>
+
+      {/* NUEVO: Tarjeta de Personalización de Apariencia */}
+      <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-pink-50 text-pink-600 rounded-xl flex items-center justify-center">
+            <Palette size={20} />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Apariencia de la Comunidad</h2>
+            <p className="text-sm text-gray-500">Personaliza el nombre y las equipaciones</p>
+          </div>
+        </div>
+        
+        <form action={async (formData) => {
+          "use server"
+          await updateCommunitySettings(formData)
+        }} className="space-y-6">
+          <input type="hidden" name="community_id" value={community.id} />
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">Nombre de la Comunidad</label>
+            <input 
+              type="text" 
+              name="name" 
+              defaultValue={community.name} 
+              className="block w-full rounded-xl border-0 py-3 px-4 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Color Principal</label>
+              <div className="flex items-center gap-3">
+                <input type="color" name="primaryColor" defaultValue={community.primary_color || '#2563eb'} className="h-12 w-20 rounded-lg cursor-pointer border-0 p-1 bg-gray-50 ring-1 ring-inset ring-gray-300" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">Color Secundario</label>
+              <div className="flex items-center gap-3">
+                <input type="color" name="secondaryColor" defaultValue={community.secondary_color || '#ffffff'} className="h-12 w-20 rounded-lg cursor-pointer border-0 p-1 bg-gray-50 ring-1 ring-inset ring-gray-300" />
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-gray-100 flex justify-end">
+            <button type="submit" className="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-gray-800 transition-colors shadow-sm">
+              Guardar Cambios
+            </button>
+          </div>
+        </form>
       </div>
 
     </div>
