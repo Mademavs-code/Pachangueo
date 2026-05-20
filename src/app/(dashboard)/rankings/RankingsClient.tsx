@@ -96,10 +96,7 @@ export default function RankingsClient({
           <button 
             onClick={() => setRankingModal({ isOpen: true, mode: 'create', name: '', description: '', metric: 'mvps', visual_type: 'podium' })}
             className="flex items-center gap-2 text-white font-black py-4 px-8 rounded-full transition-all transform hover:scale-105 border-2 border-white/20 uppercase tracking-widest shadow-lg"
-            style={{ 
-              backgroundColor: 'var(--color-primary)', 
-              boxShadow: '0 0 20px color-mix(in srgb, var(--color-primary) 60%, transparent)' 
-            }}
+            style={{ backgroundColor: 'var(--color-primary)', boxShadow: '0 0 20px color-mix(in srgb, var(--color-primary) 60%, transparent)' }}
           >
             <Plus size={20} /> Forjar Ranking
           </button>
@@ -118,11 +115,8 @@ export default function RankingsClient({
           <div 
             key={rk.id} 
             className="p-6 md:p-8 rounded-[2rem] bg-[#0f172a] shadow-2xl space-y-10 relative group overflow-hidden transition-all duration-500"
-            style={{ 
-              border: `1px solid ${isBad ? '#dc2626' : 'color-mix(in srgb, var(--color-primary) 50%, transparent)'}` 
-            }}
+            style={{ border: `1px solid ${isBad ? '#dc2626' : 'color-mix(in srgb, var(--color-primary) 50%, transparent)'}` }}
           >
-            {/* Brillo de fondo con la variable primaria solucionada */}
             <div 
               className="absolute top-0 right-0 w-[500px] h-[500px] blur-[100px] pointer-events-none transition-opacity opacity-10 group-hover:opacity-20"
               style={{ backgroundColor: isBad ? '#dc2626' : 'var(--color-primary)' }}
@@ -142,10 +136,7 @@ export default function RankingsClient({
                   {rk.info && <rk.info.icon size={36} />}
                 </div>
                 <div>
-                  <h3 
-                    className="text-2xl md:text-3xl font-black uppercase tracking-tighter"
-                    style={{ color: isBad ? '#ef4444' : 'var(--color-primary)' }}
-                  >
+                  <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tighter" style={{ color: isBad ? '#ef4444' : 'var(--color-primary)' }}>
                     {rk.name}
                   </h3>
                   <p className="text-slate-400 font-medium text-xs md:text-sm mt-1">{rk.description}</p>
@@ -165,11 +156,11 @@ export default function RankingsClient({
             </div>
 
             {rk.visual_type === 'podium' && (
-              <div className="flex flex-col md:flex-row items-end justify-center gap-4 md:gap-8 pt-24 pb-8 max-w-4xl mx-auto relative z-10">
+              <div className="flex flex-col md:flex-row items-center md:items-end justify-center gap-12 md:gap-8 pt-8 md:pt-24 pb-8 max-w-4xl mx-auto relative z-10">
                 
                 {top2 && top2.value > 0 && (
-                  <div className="w-full md:w-1/3 flex flex-col items-center order-2 md:order-1 relative group/podium transform hover:-translate-y-4 transition-transform duration-300">
-                    <div className="absolute -top-16 z-20">
+                  <div className="w-[85%] max-w-[260px] md:max-w-none md:w-1/3 flex flex-col items-center order-2 md:order-1 relative group/podium transform hover:-translate-y-4 transition-transform duration-300">
+                    <div className="relative md:absolute z-20 md:-top-16 -mb-10 md:mb-0">
                       {top2.avatar ? (
                         <img src={top2.avatar} alt={top2.alias} className="w-24 h-24 rounded-full object-cover border-[6px] border-slate-400 shadow-[0_0_20px_rgba(148,163,184,0.4)] bg-slate-800" />
                       ) : (
@@ -177,7 +168,7 @@ export default function RankingsClient({
                       )}
                       <div className="absolute -bottom-2 -right-2 bg-gradient-to-br from-slate-300 to-slate-500 text-slate-900 w-10 h-10 rounded-full flex items-center justify-center font-black text-sm border-2 border-slate-900 shadow-xl">2º</div>
                     </div>
-                    <div className="bg-gradient-to-t from-slate-800 to-slate-700/50 border-t-[3px] border-slate-400 w-full h-32 rounded-t-2xl flex flex-col items-center justify-end pb-4 shadow-2xl relative overflow-hidden">
+                    <div className="bg-gradient-to-t from-slate-800 to-slate-700/50 border-2 md:border-0 md:border-t-[3px] border-slate-400 w-full h-36 md:h-32 pt-12 md:pt-0 rounded-3xl md:rounded-b-none md:rounded-t-2xl flex flex-col items-center justify-end pb-4 shadow-2xl relative overflow-hidden">
                       <p className="font-black text-lg text-white text-center truncate w-full px-4">{top2.alias}</p>
                       <span className="text-xs font-black text-slate-900 bg-slate-300 px-3 py-1 rounded-full mt-2 shadow-[0_0_10px_rgba(148,163,184,0.3)]">{top2.value} {rk.info?.unit}</span>
                     </div>
@@ -185,8 +176,8 @@ export default function RankingsClient({
                 )}
 
                 {top1 && top1.value > 0 ? (
-                  <div className="w-full md:w-1/3 flex flex-col items-center order-1 md:order-2 relative group/podium transform hover:-translate-y-6 transition-transform duration-300 z-30">
-                    <div className="absolute -top-24 md:-top-28 z-20 flex flex-col items-center">
+                  <div className="w-[90%] max-w-[300px] md:max-w-none md:w-1/3 flex flex-col items-center order-1 md:order-2 relative group/podium transform hover:-translate-y-6 transition-transform duration-300 z-30">
+                    <div className="relative md:absolute md:-top-28 z-20 flex flex-col items-center -mb-12 md:mb-0">
                       {isBad ? (
                         <AlertTriangle className="text-red-500 mb-2 animate-pulse drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]" size={36} />
                       ) : (
@@ -221,10 +212,7 @@ export default function RankingsClient({
                         )}
                         <div 
                           className="absolute -bottom-3 -right-3 text-white w-12 h-12 rounded-full flex items-center justify-center font-black text-xl border-2 shadow-2xl z-20"
-                          style={{
-                            backgroundColor: isBad ? '#dc2626' : 'var(--color-primary)',
-                            borderColor: '#0f172a'
-                          }}
+                          style={{ backgroundColor: isBad ? '#dc2626' : 'var(--color-primary)', borderColor: '#0f172a' }}
                         >
                           1º
                         </div>
@@ -232,11 +220,8 @@ export default function RankingsClient({
                     </div>
                     
                     <div 
-                      className="w-full h-40 md:h-48 rounded-t-3xl flex flex-col items-center justify-end pb-6 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)] relative overflow-hidden border-t-[4px]"
-                      style={{
-                        borderColor: isBad ? '#ef4444' : 'var(--color-primary)',
-                        backgroundColor: '#1e293b'
-                      }}
+                      className="w-full h-44 md:h-48 pt-16 md:pt-0 rounded-3xl md:rounded-b-none md:rounded-t-3xl border-2 md:border-0 md:border-t-[4px] flex flex-col items-center justify-end pb-6 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)] relative overflow-hidden"
+                      style={{ borderColor: isBad ? '#ef4444' : 'var(--color-primary)', backgroundColor: '#1e293b' }}
                     >
                       <div 
                         className="absolute inset-0 opacity-30"
@@ -245,10 +230,7 @@ export default function RankingsClient({
                       <p className="font-black text-2xl md:text-3xl text-center truncate w-full px-4 relative z-10 text-white drop-shadow-md">{top1.alias}</p>
                       <span 
                         className="text-sm font-black px-5 py-1.5 rounded-full mt-2 relative z-10 shadow-lg border text-white"
-                        style={{
-                          backgroundColor: isBad ? '#991b1b' : 'var(--color-primary)',
-                          borderColor: isBad ? '#fca5a5' : 'rgba(255,255,255,0.4)'
-                        }}
+                        style={{ backgroundColor: isBad ? '#991b1b' : 'var(--color-primary)', borderColor: isBad ? '#fca5a5' : 'rgba(255,255,255,0.4)' }}
                       >
                         {top1.value} {rk.info?.unit}
                       </span>
@@ -259,8 +241,8 @@ export default function RankingsClient({
                 )}
 
                 {top3 && top3.value > 0 && (
-                  <div className="w-full md:w-1/3 flex flex-col items-center order-3 relative group/podium transform hover:-translate-y-4 transition-transform duration-300">
-                    <div className="absolute -top-12 z-10">
+                  <div className="w-[85%] max-w-[260px] md:max-w-none md:w-1/3 flex flex-col items-center order-3 relative group/podium transform hover:-translate-y-4 transition-transform duration-300">
+                    <div className="relative md:absolute z-10 md:-top-12 -mb-8 md:mb-0">
                       {top3.avatar ? (
                         <img src={top3.avatar} alt={top3.alias} className="w-20 h-20 rounded-full object-cover border-[6px] border-amber-700 shadow-[0_0_20px_rgba(180,83,9,0.4)] bg-slate-800" />
                       ) : (
@@ -268,7 +250,7 @@ export default function RankingsClient({
                       )}
                       <div className="absolute -bottom-2 -right-2 bg-gradient-to-br from-amber-600 to-amber-800 text-white w-9 h-9 rounded-full flex items-center justify-center font-black text-xs border-2 border-slate-900 shadow-xl">3º</div>
                     </div>
-                    <div className="bg-gradient-to-t from-slate-800 to-slate-800/80 border-t-[3px] border-amber-700 w-full h-20 md:h-24 rounded-t-2xl flex flex-col items-center justify-end pb-3 shadow-2xl relative overflow-hidden">
+                    <div className="bg-gradient-to-t from-slate-800 to-slate-800/80 border-2 md:border-0 md:border-t-[3px] border-amber-700 w-full h-32 md:h-24 pt-10 md:pt-0 rounded-3xl md:rounded-b-none md:rounded-t-2xl flex flex-col items-center justify-end pb-3 shadow-2xl relative overflow-hidden">
                       <p className="font-bold text-sm text-white text-center truncate w-full px-4">{top3.alias}</p>
                       <span className="text-[10px] font-black text-amber-100 bg-amber-900/80 border border-amber-700 px-3 py-1 rounded-full mt-1">{top3.value} {rk.info?.unit}</span>
                     </div>
@@ -283,11 +265,7 @@ export default function RankingsClient({
                   const positionNumber = rk.visual_type === 'podium' ? idx + 4 : idx + 1
                   if (player.value === 0) return null
                   return (
-                    <div 
-                      key={player.id} 
-                      className="group/row flex items-center justify-between p-4 md:p-5 rounded-2xl bg-slate-800/50 hover:bg-slate-700/80 transition-all border border-slate-700 hover:shadow-lg"
-                      style={{ ['--hover-border-color' as any]: isBad ? '#ef4444' : 'var(--color-primary)' }}
-                    >
+                    <div key={player.id} className="group/row flex items-center justify-between p-4 md:p-5 rounded-2xl bg-slate-800/50 hover:bg-slate-700/80 transition-all border border-slate-700 hover:shadow-lg" style={{ ['--hover-border-color' as any]: isBad ? '#ef4444' : 'var(--color-primary)' }}>
                       <style jsx>{`.group\\/row:hover { border-color: var(--hover-border-color); }`}</style>
                       <div className="flex items-center gap-4 md:gap-6">
                         <span className="text-sm font-black text-slate-500 w-6 text-center group-hover/row:text-white transition-colors">{positionNumber}</span>
@@ -299,14 +277,7 @@ export default function RankingsClient({
                         <p className="font-black text-slate-200 text-base md:text-lg group-hover/row:text-white transition-colors">{player.alias}</p>
                       </div>
                       <div className="text-right">
-                         <span 
-                           className="text-sm md:text-base font-black px-4 py-2 rounded-xl shadow-sm border transition-colors"
-                           style={{
-                              backgroundColor: isBad ? 'color-mix(in srgb, #ef4444 15%, transparent)' : 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
-                              color: '#ffffff',
-                              borderColor: isBad ? 'color-mix(in srgb, #ef4444 40%, transparent)' : 'color-mix(in srgb, var(--color-primary) 40%, transparent)'
-                           }}
-                         >
+                         <span className="text-sm md:text-base font-black px-4 py-2 rounded-xl shadow-sm border transition-colors" style={{ backgroundColor: isBad ? 'color-mix(in srgb, #ef4444 15%, transparent)' : 'color-mix(in srgb, var(--color-primary) 15%, transparent)', color: '#ffffff', borderColor: isBad ? 'color-mix(in srgb, #ef4444 40%, transparent)' : 'color-mix(in srgb, var(--color-primary) 40%, transparent)' }}>
                            {player.value} <span className="text-[10px] uppercase font-bold opacity-70 ml-1" style={{ color: isBad ? '#fca5a5' : 'color-mix(in srgb, var(--color-primary) 80%, white)' }}>{rk.info?.unit}</span>
                          </span>
                       </div>

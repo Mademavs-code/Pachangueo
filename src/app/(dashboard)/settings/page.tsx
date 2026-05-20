@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { Settings, Shield, Link as LinkIcon, Palette } from 'lucide-react'
 import InviteLinkBox from './InviteLinkBox'
 import { updateCommunitySettings } from '@/actions/communities'
+import { getActiveCommunityId } from '@/lib/community'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -22,8 +23,8 @@ export default async function SettingsPage() {
   
   if (!profile) redirect('/setup')
 
-  // 3. Buscar la comunidad donde el usuario es ADMIN (¡AHORA PEDIMOS LOS COLORES!)
-  const { data: membershipData } = await supabase
+  // 3. NUEVA LÓGICA MULTICOMUNIDAD (Igual que en el Tablón)
+  const { data: membershipsData } = await supabase
     .from('community_members')
     .select(`
       community_id,
@@ -31,11 +32,7 @@ export default async function SettingsPage() {
       communities ( id, name, invite_token, primary_color, secondary_color )
     `)
     .eq('profile_id', profile.id)
-    .eq('role', 'ADMIN')
-    .limit(1)
-    .single()
 
-  // Actualizamos el tipo para que acepte los colores
   type CommunityInfo = { 
     id: string, 
     name: string, 
@@ -43,14 +40,24 @@ export default async function SettingsPage() {
     primary_color: string, 
     secondary_color: string 
   }
-  const membership = membershipData as { community_id: string, role: string, communities: CommunityInfo } | null
 
-  // Si no es admin, lo devolvemos al inicio
-  if (!membership || !membership.communities) {
+  const memberships = (membershipsData as { community_id: string, role: string, communities: CommunityInfo }[]) || []
+  
+  if (memberships.length === 0) redirect('/setup')
+
+  // 4. Buscar la comunidad activa usando la cookie
+  const activeCommunityId = await getActiveCommunityId(memberships)
+  const activeMembership = memberships.find(m => m.community_id === activeCommunityId)
+
+  // Si no es admin de la comunidad activa, no puede ver configuración
+  if (!activeMembership || activeMembership.role !== 'ADMIN' || !activeMembership.communities) {
     redirect('/')
   }
 
-  const community = membership.communities
+  // Desempaquetar si devuelve un array de un solo elemento o directamente el objeto
+  const community = Array.isArray(activeMembership.communities) 
+    ? activeMembership.communities[0] 
+    : activeMembership.communities;
 
   return (
     <div className="max-w-4xl mx-auto py-8 space-y-8">
@@ -92,7 +99,7 @@ export default async function SettingsPage() {
         )}
       </div>
 
-      {/* NUEVO: Tarjeta de Personalización de Apariencia */}
+      {/* Tarjeta de Personalización de Apariencia */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-8">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 bg-pink-50 text-pink-600 rounded-xl flex items-center justify-center">

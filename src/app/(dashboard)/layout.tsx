@@ -2,72 +2,71 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/Sidebar'
 import { LogOut } from 'lucide-react'
+import { getActiveCommunityId } from '@/lib/community'
+import React from 'react' // Añadido para React.ReactNode
 
 export default async function DashboardLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   const supabase = await createClient()
 
-  // 1. Obtenemos el usuario de Auth
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
 
-  if (!user) {
-    redirect('/login')
-  }
-
-  // 2. Buscamos el ID real de su perfil y si es INVITADO
   const { data: profileData } = await supabase
     .from('profiles')
     .select('id, is_guest, alias')
     .eq('id', user.id)
     .single()
 
-  if (!profileData) {
-    redirect('/setup')
-  }
+  if (!profileData) redirect('/setup')
 
   const profile = profileData as unknown as { id: string, is_guest: boolean, alias: string }
   const isGuest = profile.is_guest
 
-  // 3. Buscamos la comunidad y SUS COLORES
-  const { data: membershipData } = await supabase
+  const { data: membershipsData } = await supabase
     .from('community_members')
     .select(`
       community_id,
+      role,
       communities ( primary_color, secondary_color )
     `)
     .eq('profile_id', profile.id)
-    .limit(1)
-    .single()
 
-  if (!membershipData) {
-    redirect('/setup')
+  const memberships = (membershipsData as any[]) || []
+
+  if (!isGuest && memberships.length === 0) redirect('/setup')
+
+  let primaryColor = '#2563eb'
+  let secondaryColor = '#ffffff'
+
+  if (!isGuest) {
+    const activeCommunityId = await getActiveCommunityId(memberships)
+    const activeMembership = memberships.find(m => m.community_id === activeCommunityId)
+
+    if (activeMembership && activeMembership.communities) {
+      const commData = Array.isArray(activeMembership.communities) 
+        ? activeMembership.communities[0] 
+        : activeMembership.communities;
+        
+      primaryColor = commData.primary_color || '#2563eb'
+      secondaryColor = commData.secondary_color || '#ffffff'
+    }
   }
-
-  type CommunityData = { primary_color: string | null; secondary_color: string | null }
-  const membership = membershipData as unknown as { community_id: string; communities: CommunityData }
-  
-  const primaryColor = membership.communities?.primary_color || '#2563eb'
-  const secondaryColor = membership.communities?.secondary_color || '#ffffff'
 
   return (
     <div 
-      className="min-h-screen bg-gray-50 flex flex-col md:flex-row"
+      className="min-h-screen bg-gray-50 flex flex-col md:flex-row transition-colors duration-500"
       style={{ 
         '--color-primary': primaryColor,
         '--color-secondary': secondaryColor 
       } as React.CSSProperties}
     >
-      
-      {/* 🛡️ EL SIDEBAR SOLO SE MUESTRA A MIEMBROS REALES */}
       {!isGuest && <Sidebar />}
 
-      {/* Contenedor principal */}
-      <main className={`flex-1 overflow-y-auto ${!isGuest ? 'ml-64 p-4 md:p-8' : ''}`}>
-        
-        {/* 🛡️ CABECERA ESPECIAL SOLO PARA INVITADOS */}
+      <main className={`flex-1 overflow-y-auto ${!isGuest ? 'md:ml-64 pt-20 md:pt-0 pb-24 md:pb-0 p-4 md:p-8' : ''}`}>
         {isGuest && (
           <header className="bg-gray-900 text-white px-6 py-4 flex items-center justify-between shadow-md mb-8 sticky top-0 z-50">
             <div className="flex items-center gap-3">
@@ -79,7 +78,6 @@ export default async function DashboardLayout({
                 <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Modo Invitado</p>
               </div>
             </div>
-            {/* Botón de cierre de sesión reutilizando tu ruta existente */}
             <form action="/auth/signout" method="post">
               <button type="submit" className="flex items-center gap-2 bg-white/10 hover:bg-red-500 hover:text-white text-gray-300 px-4 py-2 rounded-xl text-sm font-bold transition-all">
                 <LogOut size={16} /> Salir
@@ -92,7 +90,6 @@ export default async function DashboardLayout({
           {children}
         </div>
       </main>
-
     </div>
   )
 }

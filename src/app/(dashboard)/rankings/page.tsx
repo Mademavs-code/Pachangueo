@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Trophy } from 'lucide-react'
 import RankingsClient from './RankingsClient'
+import { getActiveCommunityId } from '@/lib/community'
 
 export default async function RankingsPage() {
   const supabase = await createClient()
@@ -12,17 +13,19 @@ export default async function RankingsPage() {
   const profile = profileData as { id: string, is_guest: boolean } | null
   if (!profile || profile.is_guest) redirect('/')
 
-  const { data: myMembershipData } = await supabase
+  // NUEVA LÓGICA MULTICOMUNIDAD
+const { data: membershipsData } = await supabase
     .from('community_members')
     .select('community_id, role')
     .eq('profile_id', profile.id)
-    .single()
+
+  const memberships = (membershipsData as { community_id: string, role: string }[]) || []
+
+  if (memberships.length === 0) redirect('/setup')
   
-  const myMembership = myMembershipData as { community_id: string, role: string } | null
-  if (!myMembership) redirect('/setup')
-  
-  const communityId = myMembership.community_id
-  const isAdmin = myMembership.role === 'ADMIN'
+  const activeCommunityId = await getActiveCommunityId(memberships)
+  const activeMembership = memberships.find(m => m.community_id === activeCommunityId)
+  const isAdmin = activeMembership?.role === 'ADMIN'
 
   const { data: membersData } = await supabase
     .from('community_members')
@@ -30,7 +33,7 @@ export default async function RankingsPage() {
       profile_id, alias,
       profiles ( avatar_url )
     `)
-    .eq('community_id', communityId)
+    .eq('community_id', activeCommunityId)
 
   const members = (membersData as any[])?.map(m => ({
     id: m.profile_id,
@@ -41,12 +44,12 @@ export default async function RankingsPage() {
   const { data: rankingsData } = await supabase
     .from('community_rankings')
     .select('*')
-    .eq('community_id', communityId)
+    .eq('community_id', activeCommunityId)
     .order('created_at', { ascending: true })
   
   const initialRankings = (rankingsData as any[]) || []
 
-  const { data: matchesData } = await supabase.from('matches').select('id').eq('community_id', communityId)
+  const { data: matchesData } = await supabase.from('matches').select('id').eq('community_id', activeCommunityId)
   const matchIds = ((matchesData as any[]) || []).map(m => m.id)
 
   let evaluations: any[] = []
@@ -61,7 +64,6 @@ export default async function RankingsPage() {
   }
 
   return (
-    // FIX: max-w-5xl mx-auto w-full soluciona el problema de los espacios gigantes
     <div className="max-w-5xl mx-auto w-full space-y-12 pb-12 pt-8 px-4 md:px-8">
       
       <div className="bg-gray-900 rounded-3xl shadow-xl overflow-hidden relative border border-gray-800">
@@ -87,7 +89,7 @@ export default async function RankingsPage() {
       </div>
 
       <RankingsClient 
-        communityId={communityId}
+        communityId={activeCommunityId}
         isAdmin={isAdmin}
         members={members}
         initialRankings={initialRankings}

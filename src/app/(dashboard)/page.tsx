@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { MessageSquare, Calendar, Clock, Megaphone } from 'lucide-react'
 import { createAnnouncement } from '@/actions/posts'
-import { getActiveCommunityId } from '@/lib/community' // <-- Importamos nuestra nueva utilidad
+import { getActiveCommunityId } from '@/lib/community'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -22,33 +22,27 @@ export default async function DashboardPage() {
     else redirect('/login')
   }
 
-  // 🔄 NUEVA LÓGICA MULTICOMUNIDAD
-  // 1. Obtenemos TODAS las comunidades del usuario (sin .single())
+  // 🔄 LÓGICA MULTICOMUNIDAD
   const { data: membershipsData } = await supabase
     .from('community_members')
     .select('community_id, role')
     .eq('profile_id', user.id) 
 
-  const memberships = membershipsData || []
-
-  // 2. Si realmente no tiene ninguna, lo mandamos a crear una
+  const memberships = (membershipsData as { community_id: string, role: string }[]) || []
   if (memberships.length === 0) redirect('/setup')
 
-  // 3. Averiguamos qué comunidad está mirando ahora mismo usando la cookie
   const activeCommunityId = await getActiveCommunityId(memberships)
-  
-  // 4. Comprobamos su rol en ESTA comunidad concreta
   const activeMembership = memberships.find(m => m.community_id === activeCommunityId)
   const isAdmin = activeMembership?.role === 'ADMIN'
 
-  // OBTENEMOS SOLO LOS ANUNCIOS de la comunidad activa
+  // OBTENEMOS SOLO LOS ANUNCIOS (AÑADIMOS avatar_url)
   const { data: postsData } = await supabase
     .from('posts')
     .select(`
       id, content, created_at,
-      author:profiles!posts_author_id_fkey ( alias )
+      author:profiles!posts_author_id_fkey ( alias, avatar_url )
     `)
-    .eq('community_id', activeCommunityId) // <-- Filtramos por el ID activo
+    .eq('community_id', activeCommunityId)
     .eq('post_type', 'ANUNCIO')
     .order('created_at', { ascending: false })
 
@@ -81,7 +75,6 @@ export default async function DashboardPage() {
           "use server"
           await createAnnouncement(formData)
         }} className="bg-white rounded-3xl shadow-sm border border-gray-200 p-5 flex flex-col gap-4">
-          {/* Ojo aquí: Guardamos el anuncio en la comunidad activa */}
           <input type="hidden" name="community_id" value={activeCommunityId} />
           <textarea 
             name="content" required placeholder="¿Tienes algún comunicado para la comunidad?"
@@ -113,11 +106,20 @@ export default async function DashboardPage() {
               <div key={post.id} className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6 md:p-8 hover:shadow-md transition-all">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-4">
+                    {/* MODIFICACIÓN: Mostrar Imagen si existe, si no Inicial */}
                     <div 
-                      className="w-12 h-12 rounded-full flex items-center justify-center font-black text-white shadow-sm"
+                      className="w-12 h-12 rounded-full flex items-center justify-center font-black text-white shadow-sm overflow-hidden"
                       style={{ backgroundColor: 'var(--color-primary)' }}
                     >
-                      {post.author?.alias?.charAt(0).toUpperCase() || 'J'}
+                      {post.author?.avatar_url ? (
+                        <img 
+                          src={post.author.avatar_url} 
+                          alt={`Avatar de ${post.author?.alias}`} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        post.author?.alias?.charAt(0).toUpperCase() || 'J'
+                      )}
                     </div>
                     <div>
                       <p className="font-black text-gray-900 text-lg leading-tight">{post.author?.alias || 'Administración'}</p>

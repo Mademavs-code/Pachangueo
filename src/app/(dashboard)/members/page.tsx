@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Users } from 'lucide-react'
 import MembersList from './MembersList'
+import { getActiveCommunityId } from '@/lib/community'
 
 export default async function MembersPage() {
   const supabase = await createClient()
@@ -13,20 +14,21 @@ export default async function MembersPage() {
   
   if (!profile || profile.is_guest) redirect('/') 
 
-  const { data: myMembershipData } = await supabase
+  // NUEVA LÓGICA MULTICOMUNIDAD
+const { data: membershipsData } = await supabase
     .from('community_members')
     .select('community_id, role')
     .eq('profile_id', profile.id)
-    .limit(1)
-    .single()
 
-  const myMembership = myMembershipData as { community_id: string, role: string } | null
-  if (!myMembership) redirect('/setup')
+  const memberships = (membershipsData as { community_id: string, role: string }[]) || []
 
-  const isAdmin = myMembership.role === 'ADMIN'
-  const communityId = myMembership.community_id
+  if (memberships.length === 0) redirect('/setup')
 
-  // NUEVO: Pedimos también el avatar_url a la tabla profiles
+  const activeCommunityId = await getActiveCommunityId(memberships)
+  const activeMembership = memberships.find(m => m.community_id === activeCommunityId)
+  const isAdmin = activeMembership?.role === 'ADMIN'
+
+  // Pedimos los miembros de la comunidad ACTIVA
   const { data: membersData, error } = await supabase
     .from('community_members')
     .select(`
@@ -36,13 +38,12 @@ export default async function MembersPage() {
       preferred_position,
       profiles ( is_guest, avatar_url )
     `)
-    .eq('community_id', communityId)
+    .eq('community_id', activeCommunityId)
     .order('role', { ascending: true })
 
   if (error) console.error("Error cargando jugadores:", error.message)
 
   const members = (membersData as any[])?.map(m => {
-    // Extraemos la información del perfil de forma segura
     const profileInfo = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
     
     return {
@@ -51,11 +52,10 @@ export default async function MembersPage() {
       alias: m.alias,
       position: m.preferred_position || 'N/A',
       is_guest: profileInfo?.is_guest || false,
-      avatar_url: profileInfo?.avatar_url || null // <-- NUEVO
+      avatar_url: profileInfo?.avatar_url || null 
     }
   }) || []
 
-  // Ordenamos secundariamente por alias alfabético
   members.sort((a, b) => {
     if (a.role === b.role) return a.alias.localeCompare(b.alias);
     return 0;
@@ -79,7 +79,7 @@ export default async function MembersPage() {
         members={members} 
         isAdmin={isAdmin} 
         currentUserId={profile.id}
-        communityId={communityId}
+        communityId={activeCommunityId}
       />
     </div>
   )

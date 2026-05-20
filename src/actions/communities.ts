@@ -138,7 +138,7 @@ export async function setActiveCommunity(communityId: string) {
   cookieStore.set('pachangueo_active_community', communityId, {
     maxAge: 30 * 24 * 60 * 60, // 30 días
     path: '/',
-    httpOnly: true,
+    httpOnly: false,
     secure: process.env.NODE_ENV === 'production'
   })
 

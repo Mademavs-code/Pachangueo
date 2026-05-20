@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Calendar, ArrowRight, Clock, MapPin, Users, Plus } from 'lucide-react'
+import { getActiveCommunityId } from '@/lib/community'
 
 export default async function MatchesPage() {
   const supabase = await createClient()
@@ -9,15 +10,19 @@ export default async function MatchesPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: membershipData } = await supabase
+  // NUEVA LÓGICA MULTICOMUNIDAD
+const { data: membershipsData } = await supabase
     .from('community_members')
     .select('community_id, role')
     .eq('profile_id', user.id) 
-    .single()
 
-  if (!membershipData) redirect('/setup')
-  const membership = membershipData as { community_id: string, role: string }
-  const isAdmin = membership.role === 'ADMIN'
+  const memberships = (membershipsData as { community_id: string, role: string }[]) || []
+
+  if (memberships.length === 0) redirect('/setup')
+
+  const activeCommunityId = await getActiveCommunityId(memberships)
+  const activeMembership = memberships.find(m => m.community_id === activeCommunityId)
+  const isAdmin = activeMembership?.role === 'ADMIN'
 
   // OBTENEMOS SOLO LOS POSTS DE TIPO PARTIDO
   const { data: matchesData } = await supabase
@@ -26,8 +31,8 @@ export default async function MatchesPage() {
       id, content, match_id, created_at,
       author:profiles!posts_author_id_fkey ( alias )
     `)
-    .eq('community_id', membership.community_id)
-    .eq('post_type', 'PARTIDO') // <-- EL FILTRO CLAVE
+    .eq('community_id', activeCommunityId) // Filtramos por la activa
+    .eq('post_type', 'PARTIDO') 
     .order('created_at', { ascending: false })
 
   const matches = (matchesData as any[]) || []
