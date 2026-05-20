@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 
 export async function createCommunity(formData: FormData) {
   const supabase = await createClient()
@@ -128,5 +129,20 @@ export async function updateCommunitySettings(formData: FormData) {
   if (error) return { error: 'Error al actualizar la comunidad' }
 
   revalidatePath('/', 'layout') 
+  return { success: true }
+}
+
+export async function setActiveCommunity(communityId: string) {
+  // Guardamos el ID en una cookie que expira en 30 días
+  const cookieStore = await cookies()
+  cookieStore.set('pachangueo_active_community', communityId, {
+    maxAge: 30 * 24 * 60 * 60, // 30 días
+    path: '/',
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production'
+  })
+
+  // Refrescamos toda la app para que aplique los colores y datos del nuevo equipo
+  revalidatePath('/', 'layout')
   return { success: true }
 }
