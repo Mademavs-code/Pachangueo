@@ -26,7 +26,6 @@ export default function RankingsClient({
   const [loading, setLoading] = useState(false)
   const [rankingModal, setRankingModal] = useState<{ isOpen: boolean; mode: 'create' | 'edit'; id?: string; name: string; description: string; metric: string; visual_type: string } | null>(null)
   
-  // NUEVO: Estado para gestionar el filtro de posición de cada ranking (solo aplica a Listas)
   const [positionFilters, setPositionFilters] = useState<Record<string, string>>({})
 
   const computedStats = useMemo(() => {
@@ -107,13 +106,11 @@ export default function RankingsClient({
       )}
 
       {processedRankings.map((rk) => {
-        // Obtenemos los Tops globales SIEMPRE (incluso para Listas filtradas, el podio no muta)
         const top1 = rk.leaderboard[0] || null
         const top2 = rk.leaderboard[1] || null
         const top3 = rk.leaderboard[2] || null
         const isBad = rk.info?.bad
 
-        // NUEVO: Lógica de filtrado exclusivo para Listas Clasificatorias
         const currentFilter = positionFilters[rk.id] || 'ALL'
         const filteredList = currentFilter === 'ALL' 
           ? rk.leaderboard 
@@ -136,7 +133,7 @@ export default function RankingsClient({
             <div className="flex justify-between items-start border-b border-slate-700/50 pb-6 relative z-10">
               <div className="flex items-center gap-4 md:gap-5">
                 <div 
-                  className="p-3 md:p-4 rounded-2xl shadow-lg flex items-center justify-center border"
+                  className="p-3 md:p-4 rounded-2xl shadow-lg flex items-center justify-center border shrink-0"
                   style={{ 
                     backgroundColor: isBad ? 'color-mix(in srgb, #ef4444 15%, transparent)' : 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
                     color: isBad ? '#ef4444' : 'var(--color-primary)',
@@ -155,7 +152,7 @@ export default function RankingsClient({
               </div>
 
               {isAdmin && (
-                <div className="flex gap-2">
+                <div className="flex gap-2 shrink-0">
                   <button onClick={() => setRankingModal({ isOpen: true, mode: 'edit', id: rk.id, name: rk.name, description: rk.description, metric: rk.metric, visual_type: rk.visual_type })} className="p-3 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white rounded-xl transition-colors border border-slate-700">
                     <Edit3 size={18} />
                   </button>
@@ -166,13 +163,10 @@ export default function RankingsClient({
               )}
             </div>
 
-            {/* ==============================================
-                VISTA 1: PODIO METÁLICO (Igual que antes)
-            ================================================== */}
+            {/* VISTA 1: PODIO METÁLICO */}
             {rk.visual_type === 'podium' && (
               <>
                 <div className="flex flex-col md:flex-row items-center md:items-end justify-center gap-12 md:gap-8 pt-8 md:pt-24 pb-8 max-w-4xl mx-auto relative z-10">
-                  {/* Top 2 */}
                   {top2 && top2.value > 0 && (
                     <div className="w-[85%] max-w-[260px] md:max-w-none md:w-1/3 flex flex-col items-center order-2 md:order-1 relative group/podium transform hover:-translate-y-4 transition-transform duration-300">
                       <div className="relative md:absolute z-20 md:-top-16 -mb-10 md:mb-0">
@@ -190,7 +184,6 @@ export default function RankingsClient({
                     </div>
                   )}
 
-                  {/* Top 1 */}
                   {top1 && top1.value > 0 ? (
                     <div className="w-[90%] max-w-[300px] md:max-w-none md:w-1/3 flex flex-col items-center order-1 md:order-2 relative group/podium transform hover:-translate-y-6 transition-transform duration-300 z-30">
                       <div className="relative md:absolute md:-top-28 z-20 flex flex-col items-center -mb-12 md:mb-0">
@@ -220,7 +213,6 @@ export default function RankingsClient({
                     <div className="text-center py-6 text-slate-500 text-sm font-medium border-2 border-dashed border-slate-700 rounded-3xl w-full h-40 flex flex-col items-center justify-center">No hay registros suficientes.</div>
                   )}
 
-                  {/* Top 3 */}
                   {top3 && top3.value > 0 && (
                     <div className="w-[85%] max-w-[260px] md:max-w-none md:w-1/3 flex flex-col items-center order-3 relative group/podium transform hover:-translate-y-4 transition-transform duration-300">
                       <div className="relative md:absolute z-10 md:-top-12 -mb-8 md:mb-0">
@@ -244,23 +236,25 @@ export default function RankingsClient({
                     {listPlayersForPodium.map((player, idx) => {
                       if (player.value === 0) return null
                       return (
-                        <div key={player.id} className="group/row flex items-center justify-between p-4 md:p-5 rounded-2xl bg-slate-800/50 hover:bg-slate-700/80 transition-all border border-slate-700 hover:shadow-lg" style={{ ['--hover-border-color' as any]: isBad ? '#ef4444' : 'var(--color-primary)' }}>
+                        <div key={player.id} className="group/row flex items-center justify-between p-3 md:p-5 rounded-2xl bg-slate-800/50 hover:bg-slate-700/80 transition-all border border-slate-700 hover:shadow-lg gap-2" style={{ ['--hover-border-color' as any]: isBad ? '#ef4444' : 'var(--color-primary)' }}>
                           <style jsx>{`.group\\/row:hover { border-color: var(--hover-border-color); }`}</style>
-                          <div className="flex items-center gap-4 md:gap-6">
-                            <span className="text-sm font-black text-slate-500 w-6 text-center group-hover/row:text-white transition-colors">{idx + 4}</span>
+                          <div className="flex items-center gap-3 md:gap-6 min-w-0">
+                            <span className="text-sm font-black text-slate-500 w-5 md:w-6 text-center group-hover/row:text-white transition-colors shrink-0">{idx + 4}</span>
                             {player.avatar ? (
-                               <img src={player.avatar} alt={player.alias} className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border-2 border-slate-600 group-hover/row:border-white transition-colors" />
+                               <img src={player.avatar} alt={player.alias} className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border-2 border-slate-600 group-hover/row:border-white transition-colors shrink-0" />
                             ) : (
-                               <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-700 flex items-center justify-center font-bold text-slate-300 text-sm border-2 border-slate-600 group-hover/row:border-white transition-colors">{player.alias.charAt(0)}</div>
+                               <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-700 flex items-center justify-center font-bold text-slate-300 text-sm border-2 border-slate-600 group-hover/row:border-white transition-colors shrink-0">{player.alias.charAt(0)}</div>
                             )}
-                            <div>
-                              <p className="font-black text-slate-200 text-base md:text-lg group-hover/row:text-white transition-colors leading-tight">{player.alias}</p>
-                              <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">{player.position !== 'N/A' ? player.position : 'Sin Pos.'}</span>
+                            <div className="min-w-0">
+                              <p className="font-black text-slate-200 text-base md:text-lg group-hover/row:text-white transition-colors leading-tight truncate">{player.alias}</p>
+                              <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider truncate block">{player.position !== 'N/A' ? player.position : 'Sin Pos.'}</span>
                             </div>
                           </div>
-                          <div className="text-right">
-                             <span className="text-sm md:text-base font-black px-4 py-2 rounded-xl shadow-sm border transition-colors" style={{ backgroundColor: isBad ? 'color-mix(in srgb, #ef4444 15%, transparent)' : 'color-mix(in srgb, var(--color-primary) 15%, transparent)', color: '#ffffff', borderColor: isBad ? 'color-mix(in srgb, #ef4444 40%, transparent)' : 'color-mix(in srgb, var(--color-primary) 40%, transparent)' }}>
-                               {player.value} <span className="text-[10px] uppercase font-bold opacity-70 ml-1" style={{ color: isBad ? '#fca5a5' : 'color-mix(in srgb, var(--color-primary) 80%, white)' }}>{rk.info?.unit}</span>
+                          
+                          {/* CORRECCIÓN: flex en lugar de block, whitespace-nowrap, shrink-0 */}
+                          <div className="text-right shrink-0">
+                             <span className="inline-flex items-baseline gap-1 text-sm md:text-base font-black px-3 py-1.5 md:px-4 md:py-2 rounded-xl shadow-sm border transition-colors whitespace-nowrap" style={{ backgroundColor: isBad ? 'color-mix(in srgb, #ef4444 15%, transparent)' : 'color-mix(in srgb, var(--color-primary) 15%, transparent)', color: '#ffffff', borderColor: isBad ? 'color-mix(in srgb, #ef4444 40%, transparent)' : 'color-mix(in srgb, var(--color-primary) 40%, transparent)' }}>
+                               {player.value} <span className="text-[9px] md:text-[10px] uppercase font-bold opacity-70" style={{ color: isBad ? '#fca5a5' : 'color-mix(in srgb, var(--color-primary) 80%, white)' }}>{rk.info?.unit}</span>
                              </span>
                           </div>
                         </div>
@@ -271,12 +265,9 @@ export default function RankingsClient({
               </>
             )}
 
-            {/* ==============================================
-                VISTA 2: LISTA CLASIFICATORIA (CON FILTROS - RF8)
-            ================================================== */}
+            {/* VISTA 2: LISTA CLASIFICATORIA */}
             {rk.visual_type === 'list' && (
               <div className="relative z-10 pt-4">
-                {/* Botones de Filtro por Posición (RF8) */}
                 <div className="flex flex-wrap justify-center gap-2 mb-8 bg-slate-900/50 p-2 rounded-2xl border border-slate-700/50 inline-flex mx-auto">
                   {['ALL', 'POR', 'DEF', 'MED', 'DEL'].map(pos => {
                     const isActive = currentFilter === pos;
@@ -301,23 +292,25 @@ export default function RankingsClient({
                     listPlayersForList.map((player, idx) => {
                       if (player.value === 0) return null
                       return (
-                        <div key={player.id} className="group/row flex items-center justify-between p-4 md:p-5 rounded-2xl bg-slate-800/50 hover:bg-slate-700/80 transition-all border border-slate-700 hover:shadow-lg" style={{ ['--hover-border-color' as any]: isBad ? '#ef4444' : 'var(--color-primary)' }}>
+                        <div key={player.id} className="group/row flex items-center justify-between p-3 md:p-5 rounded-2xl bg-slate-800/50 hover:bg-slate-700/80 transition-all border border-slate-700 hover:shadow-lg gap-2" style={{ ['--hover-border-color' as any]: isBad ? '#ef4444' : 'var(--color-primary)' }}>
                           <style jsx>{`.group\\/row:hover { border-color: var(--hover-border-color); }`}</style>
-                          <div className="flex items-center gap-4 md:gap-6">
-                            <span className="text-sm font-black text-slate-500 w-6 text-center group-hover/row:text-white transition-colors">{idx + 1}</span>
+                          <div className="flex items-center gap-3 md:gap-6 min-w-0">
+                            <span className="text-sm font-black text-slate-500 w-5 md:w-6 text-center group-hover/row:text-white transition-colors shrink-0">{idx + 1}</span>
                             {player.avatar ? (
-                               <img src={player.avatar} alt={player.alias} className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border-2 border-slate-600 group-hover/row:border-white transition-colors" />
+                               <img src={player.avatar} alt={player.alias} className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover border-2 border-slate-600 group-hover/row:border-white transition-colors shrink-0" />
                             ) : (
-                               <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-700 flex items-center justify-center font-bold text-slate-300 text-sm border-2 border-slate-600 group-hover/row:border-white transition-colors">{player.alias.charAt(0)}</div>
+                               <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-slate-700 flex items-center justify-center font-bold text-slate-300 text-sm border-2 border-slate-600 group-hover/row:border-white transition-colors shrink-0">{player.alias.charAt(0)}</div>
                             )}
-                            <div>
-                              <p className="font-black text-slate-200 text-base md:text-lg group-hover/row:text-white transition-colors leading-tight">{player.alias}</p>
-                              <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">{player.position !== 'N/A' ? player.position : 'Sin Pos.'}</span>
+                            <div className="min-w-0">
+                              <p className="font-black text-slate-200 text-base md:text-lg group-hover/row:text-white transition-colors leading-tight truncate">{player.alias}</p>
+                              <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider truncate block">{player.position !== 'N/A' ? player.position : 'Sin Pos.'}</span>
                             </div>
                           </div>
-                          <div className="text-right">
-                             <span className="text-sm md:text-base font-black px-4 py-2 rounded-xl shadow-sm border transition-colors" style={{ backgroundColor: isBad ? 'color-mix(in srgb, #ef4444 15%, transparent)' : 'color-mix(in srgb, var(--color-primary) 15%, transparent)', color: '#ffffff', borderColor: isBad ? 'color-mix(in srgb, #ef4444 40%, transparent)' : 'color-mix(in srgb, var(--color-primary) 40%, transparent)' }}>
-                               {player.value} <span className="text-[10px] uppercase font-bold opacity-70 ml-1" style={{ color: isBad ? '#fca5a5' : 'color-mix(in srgb, var(--color-primary) 80%, white)' }}>{rk.info?.unit}</span>
+                          
+                          {/* CORRECCIÓN: flex en lugar de block, whitespace-nowrap, shrink-0 */}
+                          <div className="text-right shrink-0">
+                             <span className="inline-flex items-baseline gap-1 text-sm md:text-base font-black px-3 py-1.5 md:px-4 md:py-2 rounded-xl shadow-sm border transition-colors whitespace-nowrap" style={{ backgroundColor: isBad ? 'color-mix(in srgb, #ef4444 15%, transparent)' : 'color-mix(in srgb, var(--color-primary) 15%, transparent)', color: '#ffffff', borderColor: isBad ? 'color-mix(in srgb, #ef4444 40%, transparent)' : 'color-mix(in srgb, var(--color-primary) 40%, transparent)' }}>
+                               {player.value} <span className="text-[9px] md:text-[10px] uppercase font-bold opacity-70" style={{ color: isBad ? '#fca5a5' : 'color-mix(in srgb, var(--color-primary) 80%, white)' }}>{rk.info?.unit}</span>
                              </span>
                           </div>
                         </div>
@@ -330,9 +323,7 @@ export default function RankingsClient({
               </div>
             )}
 
-            {/* ==============================================
-                VISTA 3: TOP #1 INDIVIDUAL (Nueva Vista)
-            ================================================== */}
+            {/* VISTA 3: TOP #1 INDIVIDUAL */}
             {rk.visual_type === 'single' && (
               <div className="flex justify-center relative z-10 py-12 md:py-20">
                 {top1 && top1.value > 0 ? (
@@ -364,10 +355,10 @@ export default function RankingsClient({
                         Nº 1 Absoluto
                       </div>
                     </div>
-                    <div className="mt-10 bg-slate-800/80 px-12 pt-10 pb-8 rounded-[2.5rem] border-2 shadow-2xl flex flex-col items-center" style={{ borderColor: isBad ? '#7f1d1d' : 'color-mix(in srgb, var(--color-primary) 30%, transparent)' }}>
-                      <p className="text-3xl md:text-5xl font-black text-white drop-shadow-md mb-3">{top1.alias}</p>
-                      <span className="text-2xl md:text-3xl font-black px-6 py-2 rounded-xl border shadow-inner" style={{ backgroundColor: isBad ? '#991b1b' : 'color-mix(in srgb, var(--color-primary) 20%, transparent)', color: isBad ? '#fecaca' : 'white', borderColor: isBad ? '#f87171' : 'color-mix(in srgb, var(--color-primary) 60%, transparent)' }}>
-                        {top1.value} <span className="text-sm opacity-70 ml-1">{rk.info?.unit}</span>
+                    <div className="mt-10 bg-slate-800/80 px-12 pt-10 pb-8 rounded-[2.5rem] border-2 shadow-2xl flex flex-col items-center max-w-[90vw]" style={{ borderColor: isBad ? '#7f1d1d' : 'color-mix(in srgb, var(--color-primary) 30%, transparent)' }}>
+                      <p className="text-3xl md:text-5xl font-black text-white drop-shadow-md mb-3 truncate w-full text-center">{top1.alias}</p>
+                      <span className="inline-flex items-baseline gap-1 text-2xl md:text-3xl font-black px-6 py-2 rounded-xl border shadow-inner whitespace-nowrap" style={{ backgroundColor: isBad ? '#991b1b' : 'color-mix(in srgb, var(--color-primary) 20%, transparent)', color: isBad ? '#fecaca' : 'white', borderColor: isBad ? '#f87171' : 'color-mix(in srgb, var(--color-primary) 60%, transparent)' }}>
+                        {top1.value} <span className="text-sm font-bold opacity-70">{rk.info?.unit}</span>
                       </span>
                     </div>
                   </div>
