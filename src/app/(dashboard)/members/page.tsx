@@ -15,7 +15,7 @@ export default async function MembersPage() {
   if (!profile || profile.is_guest) redirect('/') 
 
   // NUEVA LÓGICA MULTICOMUNIDAD
-const { data: membershipsData } = await supabase
+  const { data: membershipsData } = await supabase
     .from('community_members')
     .select('community_id, role')
     .eq('profile_id', profile.id)
@@ -28,7 +28,7 @@ const { data: membershipsData } = await supabase
   const activeMembership = memberships.find(m => m.community_id === activeCommunityId)
   const isAdmin = activeMembership?.role === 'ADMIN'
 
-  // Pedimos los miembros de la comunidad ACTIVA
+  // 1. Pedimos los miembros de la comunidad ACTIVA
   const { data: membersData, error } = await supabase
     .from('community_members')
     .select(`
@@ -43,16 +43,68 @@ const { data: membershipsData } = await supabase
 
   if (error) console.error("Error cargando jugadores:", error.message)
 
+  // 2. OBTENER ESTADÍSTICAS REALES PARA CADA JUGADOR
+  const { data: matches } = await supabase.from('matches').select('id').eq('community_id', activeCommunityId)
+  
+  // 👉 CORRECCIÓN: Casteo explícito a un array con propiedad 'id' para evitar el error 'never'
+  const matchIds = (matches as { id: string }[])?.map(m => m.id) || []
+
+  let evaluations: any[] = []
+  let playerRecords: any[] = []
+
+  if (matchIds.length > 0) {
+    const { data: evals } = await supabase.from('match_evaluations').select('evaluated_id, rating, is_mvp').in('match_id', matchIds)
+    evaluations = (evals as any[]) || [] // Blindado
+    
+    const { data: recs } = await supabase.from('match_players').select('member_id, attendance, has_paid').in('match_id', matchIds)
+    playerRecords = (recs as any[]) || [] // Blindado
+  }
+
+  // Mapa de estadísticas base
+  const statsMap: Record<string, { matches: number, mvps: number, totalRating: number, ratingCount: number, lates: number, noShows: number, debts: number }> = {}
+  
+  ;(membersData as any[])?.forEach(m => {
+    statsMap[m.profile_id] = { matches: 0, mvps: 0, totalRating: 0, ratingCount: 0, lates: 0, noShows: 0, debts: 0 }
+  })
+
+  evaluations.forEach(ev => {
+    if (statsMap[ev.evaluated_id]) {
+      if (ev.is_mvp) statsMap[ev.evaluated_id].mvps++
+      statsMap[ev.evaluated_id].totalRating += ev.rating
+      statsMap[ev.evaluated_id].ratingCount++
+    }
+  })
+
+  playerRecords.forEach(rec => {
+    if (statsMap[rec.member_id]) {
+      statsMap[rec.member_id].matches++
+      if (rec.attendance === 'LATE') statsMap[rec.member_id].lates++
+      if (rec.attendance === 'NO_SHOW') statsMap[rec.member_id].noShows++
+      if (!rec.has_paid) statsMap[rec.member_id].debts++
+    }
+  })
+
+  // 3. Montamos el objeto final
   const members = (membersData as any[])?.map(m => {
     const profileInfo = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
-    
+    const s = statsMap[m.profile_id]
+    const avgRating = s.ratingCount > 0 ? Number((s.totalRating / s.ratingCount).toFixed(1)) : 0
+
     return {
       profile_id: m.profile_id,
       role: m.role,
       alias: m.alias,
       position: m.preferred_position || 'N/A',
       is_guest: profileInfo?.is_guest || false,
-      avatar_url: profileInfo?.avatar_url || null 
+      avatar_url: profileInfo?.avatar_url || null,
+      stats: {
+        matches: s.matches,
+        mvps: s.mvps,
+        avg_rating: avgRating,
+        lates: s.lates,
+        no_shows: s.noShows,
+        debts: s.debts
+      }
     }
   }) || []
 

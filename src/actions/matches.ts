@@ -241,3 +241,61 @@ export async function submitVotes(matchId: string, votes: { evaluated_id: string
 
   return { success: true }
 }
+
+// ==========================================
+// 8. EDITAR PARTIDO
+// ==========================================
+export async function updateMatch(matchId: string, formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autorizado.' }
+
+  const location = formData.get('location') as string
+  const type = formData.get('type') as string 
+  const dateStr = formData.get('date') as string
+  const timeStr = formData.get('time') as string
+  const price = parseFloat(formData.get('price') as string || '0')
+  const maxPlayers = parseInt(formData.get('maxPlayers') as string || '14')
+
+  const { error } = await (supabase.from('matches') as any)
+    .update({
+      match_date: dateStr,
+      match_time: timeStr,
+      match_location: location,
+      match_type: type,
+      match_price: price,
+      maxPlayers: maxPlayers
+    })
+    .eq('id', matchId)
+
+  if (error) return { error: 'Error al actualizar el partido: ' + error.message }
+  
+  revalidatePath(`/matches/${matchId}`)
+  revalidatePath(`/matches`)
+  return { success: true }
+}
+
+// ==========================================
+// 9. PURGAR PARTIDOS ANTIGUOS (+7 DÍAS)
+// ==========================================
+export async function purgeOldMatches(communityId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autorizado.' }
+
+  // Calculamos la fecha límite (hace 7 días)
+  const limitDate = new Date()
+  limitDate.setDate(limitDate.getDate() - 7)
+  const dateString = limitDate.toISOString().split('T')[0] // YYYY-MM-DD
+
+  // Eliminamos partidos cuya fecha sea MENOR que hace 7 días
+  const { error } = await (supabase.from('matches') as any)
+    .delete()
+    .eq('community_id', communityId)
+    .lt('match_date', dateString)
+
+  if (error) return { error: 'Error al purgar partidos antiguos: ' + error.message }
+  
+  revalidatePath(`/matches`)
+  return { success: true }
+}

@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useMemo } from 'react'
-import { Search, Shield, ShieldOff, UserX, Loader2, Star, Ghost, Edit2, X, CheckCircle2, Camera, Calendar } from 'lucide-react'
+import { Search, Shield, ShieldOff, UserX, Loader2, Star, Ghost, Edit2, X, CheckCircle2, Camera, Trophy, Flame, Clock, Coins } from 'lucide-react'
 import { changeMemberRole, kickMember, updateMemberProfile } from '@/actions/members'
 import { createClient } from '@/lib/supabase/client'
 
+// Añadimos las stats al tipo
 type Member = {
   profile_id: string
   role: string
@@ -12,6 +13,14 @@ type Member = {
   position: string
   is_guest: boolean
   avatar_url: string | null
+  stats: {
+    matches: number;
+    mvps: number;
+    avg_rating: number;
+    lates: number;
+    no_shows: number;
+    debts: number;
+  }
 }
 
 const POSITION_NAMES: Record<string, string> = {
@@ -192,7 +201,6 @@ export default function MembersList({
                         </p>
                       </div>
                       
-                      {/* FIX: Iconos de Rol envueltos en un span para soportar el atributo title */}
                       <div className="flex flex-col gap-1">
                         {member.role === 'ADMIN' && (
                           <span title="Administrador">
@@ -222,13 +230,13 @@ export default function MembersList({
 
       {selectedMember && !editModal && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col md:flex-row relative">
+          <div className="bg-white rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col md:flex-row relative">
             
-            <button onClick={() => setSelectedMember(null)} className="absolute top-4 right-4 z-10 bg-black/50 text-white p-2 rounded-full hover:bg-red-500 transition-colors">
+            <button onClick={() => setSelectedMember(null)} className="absolute top-4 right-4 z-20 bg-black/50 text-white p-2 rounded-full hover:bg-red-500 transition-colors">
               <X size={20} />
             </button>
 
-            <div className="md:w-1/2 aspect-square md:aspect-auto md:min-h-[400px] bg-gray-100 relative">
+            <div className="md:w-[45%] aspect-square md:aspect-auto md:min-h-[500px] bg-gray-100 relative">
               {selectedMember.avatar_url ? (
                 <img src={selectedMember.avatar_url} alt={selectedMember.alias} className="w-full h-full object-cover object-top" />
               ) : (
@@ -239,20 +247,54 @@ export default function MembersList({
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent md:hidden"></div>
             </div>
 
-            <div className="md:w-1/2 p-8 flex flex-col justify-center">
+            <div className="md:w-[55%] p-6 md:p-10 flex flex-col justify-center overflow-y-auto max-h-[90vh]">
               <div className="mb-6 -mt-8 md:mt-0 relative z-10">
                 <p className="text-[var(--color-primary)] font-black tracking-widest uppercase text-sm mb-1 drop-shadow-md md:drop-shadow-none">
                   {selectedMember.position !== 'N/A' ? POSITION_NAMES[selectedMember.position].slice(0, -1) : 'Sin Posición'}
                 </p>
                 <h2 className="text-4xl font-black text-white md:text-gray-900 leading-none mb-4">{selectedMember.alias}</h2>
                 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mb-6">
                   {selectedMember.role === 'ADMIN' && (
                     <span className="flex items-center gap-1 text-xs font-black uppercase bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded-lg border border-yellow-200"><Star size={14} className="fill-current"/> Administrador</span>
                   )}
                   {selectedMember.is_guest && (
                     <span className="flex items-center gap-1 text-xs font-black uppercase bg-gray-100 text-gray-500 px-3 py-1.5 rounded-lg border border-gray-200"><Ghost size={14}/> Jugador Invitado</span>
                   )}
+                </div>
+
+                {/* NUEVO: PANEL DE ESTADÍSTICAS */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+                    <Flame size={20} className="text-orange-500 mb-1" />
+                    <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.matches}</span>
+                    <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Partidos</span>
+                  </div>
+                  <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+                    <Star size={20} className="text-blue-500 mb-1 fill-current opacity-20" />
+                    <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.avg_rating || '-'}</span>
+                    <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Nota Media</span>
+                  </div>
+                  <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+                    <Trophy size={20} className="text-yellow-500 mb-1" />
+                    <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.mvps}</span>
+                    <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Premios MVP</span>
+                  </div>
+                  <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+                    <Clock size={20} className={selectedMember.stats.lates > 0 ? 'text-orange-500' : 'text-gray-400'} />
+                    <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.lates}</span>
+                    <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Tardanzas</span>
+                  </div>
+                  <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+                    <UserX size={20} className={selectedMember.stats.no_shows > 0 ? 'text-red-500' : 'text-gray-400'} />
+                    <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.no_shows}</span>
+                    <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Faltas</span>
+                  </div>
+                  <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center">
+                    <Coins size={20} className={selectedMember.stats.debts > 0 ? 'text-red-500' : 'text-gray-400'} />
+                    <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.debts}</span>
+                    <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Deudas</span>
+                  </div>
                 </div>
               </div>
 
@@ -288,6 +330,7 @@ export default function MembersList({
         </div>
       )}
 
+      {/* Modal de edición (mismo que antes) */}
       {editModal && (
         <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl">

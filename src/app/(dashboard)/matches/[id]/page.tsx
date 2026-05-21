@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Calendar, MapPin, Shield, Users, Euro, Clock, Info, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
+import { Calendar, MapPin, Shield, Users, Euro, Clock, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
 import MatchButtons from './MatchButtons'
 import LineupManager from './LineupManager'
 import { togglePayment, updateAttendance } from '@/actions/matches'
@@ -12,7 +12,6 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // NUEVO: Obtenemos también is_guest
   const { data: profileData } = await supabase
     .from('profiles')
     .select('id, is_guest')
@@ -56,10 +55,40 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
     `)
     .eq('match_id', matchId)
 
+  // ALGORITMO REAL: Obtener valoraciones históricas de los inscritos
+  const playerIds = (participants as any[])?.map(p => p.member_id) || []
+  let evaluations: any[] = []
+  
+  if (playerIds.length > 0) {
+    const { data: evalsData } = await supabase
+      .from('match_evaluations')
+      .select('evaluated_id, rating, is_mvp')
+      .in('evaluated_id', playerIds)
+    evaluations = evalsData || []
+  }
+
+  const playerStats: Record<string, { totalRating: number; count: number; mvps: number }> = {}
+  playerIds.forEach(id => playerStats[id] = { totalRating: 0, count: 0, mvps: 0 })
+
+  evaluations.forEach(ev => {
+    if (playerStats[ev.evaluated_id]) {
+      playerStats[ev.evaluated_id].totalRating += ev.rating
+      playerStats[ev.evaluated_id].count += 1
+      if (ev.is_mvp) playerStats[ev.evaluated_id].mvps += 1
+    }
+  })
+
   const players = (participants as any[])?.map(p => {
     const communityInfo = p.profiles?.community_members?.find(
       (m: any) => m.community_id === match.community_id
     )
+    
+    // Cálculo de valoración real: Nota Media pura (sin sesgos de MVP)
+    const stats = playerStats[p.member_id]
+    const finalRating = stats.count > 0 
+      ? Number((stats.totalRating / stats.count).toFixed(1)) 
+      : 5 // 5 por defecto si es nuevo
+
     return {
       member_id: p.member_id,
       team: p.team,
@@ -67,7 +96,7 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
       attendance: p.attendance || 'PENDING',
       alias: communityInfo?.alias || p.profiles?.alias || 'Jugador',
       position: communityInfo?.preferred_position || 'N/A',
-      rating: Math.floor(Math.random() * (10 - 5 + 1)) + 5 
+      rating: finalRating
     }
   }) || []
 
@@ -78,7 +107,6 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
 
   return (
     <div className="max-w-5xl mx-auto py-8 px-4 space-y-8">
-      
       <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="bg-gradient-to-r from-[var(--color-primary)] to-gray-900 p-8 text-white">
           <div className="flex items-center gap-5">
@@ -122,7 +150,6 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
             </div>
           </div>
           
-          {/* NUEVO: Pasamos las props correctas al componente MatchButtons */}
           <MatchButtons 
             matchId={matchId} 
             isJoined={isJoined} 
@@ -133,12 +160,12 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
             isGuest={isGuest}
             players={players}
             currentUserId={profileId}
+            match={match}
           />
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
         <div className={`${isAdmin && isFull ? 'lg:col-span-12' : 'lg:col-span-12'} space-y-6`}>
           <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
@@ -200,7 +227,6 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
             <LineupManager matchId={matchId} initialPlayers={players} />
           </div>
         )}
-
       </div>
     </div>
   )
