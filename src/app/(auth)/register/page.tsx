@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react'
 import { register } from '@/actions/auth'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { UserPlus, Loader2 } from 'lucide-react'
 
 function RegisterForm() {
   const searchParams = useSearchParams()
@@ -25,94 +26,93 @@ function RegisterForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-md space-y-8 rounded-xl bg-white p-8 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-[#0a0f1c] p-4 relative overflow-hidden">
+      
+      {/* Brillo de fondo */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/20 blur-[120px] rounded-full pointer-events-none"></div>
+
+      <div className="w-full max-w-md space-y-8 rounded-[2.5rem] bg-slate-900/60 backdrop-blur-xl border border-slate-800 p-8 sm:p-10 shadow-2xl relative z-10 my-8">
         <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900">Crear Cuenta</h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Únete para empezar a organizar y jugar
+          <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.2)]">
+            <UserPlus size={32} className="text-blue-500" />
+          </div>
+          <h2 className="text-3xl md:text-4xl font-black tracking-tighter text-white">Crear Cuenta</h2>
+          <p className="mt-3 text-sm font-medium text-slate-400">
+            Únete para empezar a organizar y jugar.
           </p>
         </div>
 
         <form action={handleSubmit} className="mt-8 space-y-6">
-          {/* CAMBIO CLAVE: Input oculto para el redireccionamiento posterior */}
           <input type="hidden" name="callback" value={callback} />
 
           {error && (
-            <div className="rounded-md bg-red-50 p-4 text-sm text-red-700 font-medium">
-              {error}
+            <div className="rounded-2xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-400 font-bold flex items-center gap-3">
+              <span>⚠️</span> {error}
             </div>
           )}
           
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <label htmlFor="alias" className="block text-sm font-medium leading-6 text-gray-900">
+              <label htmlFor="alias" className="block text-sm font-bold tracking-widest uppercase text-slate-400 mb-2">
                 Alias (Nombre de jugador)
               </label>
-              <div className="mt-2">
-                <input
-                  id="alias"
-                  name="alias"
-                  type="text"
-                  required
-                  className="block w-full rounded-md border-0 py-2.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
-                  placeholder="Ej. El Mago"
-                />
-              </div>
+              <input
+                id="alias"
+                name="alias"
+                type="text"
+                required
+                className="w-full px-4 py-4 rounded-xl bg-slate-950/50 border-2 border-slate-800 text-white focus:outline-none focus:border-blue-500 transition-colors font-medium placeholder:text-slate-600"
+                placeholder="Ej. El Mago"
+              />
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium leading-6 text-gray-900">
+              <label htmlFor="email" className="block text-sm font-bold tracking-widest uppercase text-slate-400 mb-2">
                 Correo electrónico
               </label>
-              <div className="mt-2">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  className="block w-full rounded-md border-0 py-2.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
-                  placeholder="ejemplo@correo.com"
-                />
-              </div>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                className="w-full px-4 py-4 rounded-xl bg-slate-950/50 border-2 border-slate-800 text-white focus:outline-none focus:border-blue-500 transition-colors font-medium placeholder:text-slate-600"
+                placeholder="ejemplo@correo.com"
+              />
             </div>
             
             <div>
-              <label htmlFor="password" className="block text-sm font-medium leading-6 text-gray-900">
+              <label htmlFor="password" className="block text-sm font-bold tracking-widest uppercase text-slate-400 mb-2">
                 Contraseña
               </label>
-              <div className="mt-2">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  minLength={6}
-                  className="block w-full rounded-md border-0 py-2.5 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
-                  placeholder="Mínimo 6 caracteres"
-                />
-              </div>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                minLength={6}
+                className="w-full px-4 py-4 rounded-xl bg-slate-950/50 border-2 border-slate-800 text-white focus:outline-none focus:border-blue-500 transition-colors font-medium placeholder:text-slate-600"
+                placeholder="Mínimo 6 caracteres"
+              />
             </div>
           </div>
 
-          <div>
+          <div className="pt-2">
             <button
               type="submit"
               disabled={isPending}
-              className="flex w-full justify-center rounded-md bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex w-full justify-center items-center gap-2 rounded-xl bg-blue-600 px-3 py-4 text-base font-black text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] hover:shadow-[0_0_30px_rgba(37,99,235,0.6)] hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:-translate-y-1"
             >
-              {isPending ? 'Creando cuenta...' : 'Registrarse'}
+              {isPending ? <Loader2 className="animate-spin" size={20} /> : <UserPlus size={20} />}
+              {isPending ? 'Fichando jugador...' : 'Registrarse'}
             </button>
           </div>
-          
         </form>
 
-        <p className="text-center text-sm text-gray-600">
+        <p className="text-center text-sm font-medium text-slate-400">
           ¿Ya tienes cuenta?{' '}
-          {/* CAMBIO CLAVE: Mantener el callback en el enlace al login */}
           <Link 
             href={`/login${callback !== '/' ? `?callback=${callback}` : ''}`} 
-            className="font-semibold text-blue-600 hover:text-blue-500 transition-colors"
+            className="font-bold text-blue-500 hover:text-blue-400 transition-colors"
           >
             Inicia sesión
           </Link>
@@ -122,10 +122,15 @@ function RegisterForm() {
   )
 }
 
-// Envoltorio requerido por Next.js
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-gray-50"><div className="animate-pulse font-medium text-gray-500">Cargando...</div></div>}>
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-[#0a0f1c]">
+        <div className="animate-pulse font-black tracking-widest uppercase text-blue-500 flex items-center gap-3">
+          <Loader2 className="animate-spin" size={24} /> Cargando
+        </div>
+      </div>
+    }>
       <RegisterForm />
     </Suspense>
   )
