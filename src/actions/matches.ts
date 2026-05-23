@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers' // <-- NUEVO IMPORT IMPRESCINDIBLE
 
 // ==========================================
 // 1. CREAR PARTIDO Y POST
@@ -16,15 +17,27 @@ export async function createMatch(formData: FormData) {
   const profile = profileData as { id: string } | null
   if (!profile) return { error: 'Perfil no encontrado.' }
 
-  const { data: membershipData } = await supabase
+  // 🚨 CORRECCIÓN: Quitamos el .single() porque el usuario puede estar en varias comunidades
+  const { data: membershipsData } = await supabase
     .from('community_members')
     .select('community_id, role')
     .eq('profile_id', profile.id)
-    .single()
 
-  const membership = membershipData as { community_id: string, role: string } | null
-  if (!membership || membership.role !== 'ADMIN') {
-    return { error: 'Solo los administradores pueden crear partidos.' }
+  const memberships = (membershipsData as { community_id: string, role: string }[]) || []
+  
+  // Obtenemos la comunidad activa desde las cookies
+  const cookieStore = await cookies()
+  const cookieCommunityId = cookieStore.get('pachangueo_active_community')?.value
+  
+  let activeCommunityId = cookieCommunityId
+  if (!activeCommunityId && memberships.length > 0) {
+    activeCommunityId = memberships[0].community_id
+  }
+
+  // Buscamos si el usuario es ADMIN en esa comunidad en concreto
+  const activeMembership = memberships.find(m => m.community_id === activeCommunityId)
+  if (!activeMembership || activeMembership.role !== 'ADMIN') {
+    return { error: 'Solo los administradores pueden crear partidos en esta comunidad.' }
   }
 
   const location = formData.get('location') as string
@@ -34,10 +47,10 @@ export async function createMatch(formData: FormData) {
   const price = parseFloat(formData.get('price') as string || '0')
   const maxPlayers = parseInt(formData.get('maxPlayers') as string || '14')
 
-  const { data: matchData, error: matchError } = await supabase
-    .from('matches')
+  // Inserción blindada
+  const { data: matchData, error: matchError } = await (supabase.from('matches') as any)
     .insert({
-      community_id: membership.community_id,
+      community_id: activeCommunityId,
       created_by: profile.id,
       match_date: dateStr,
       match_time: timeStr,
@@ -46,22 +59,22 @@ export async function createMatch(formData: FormData) {
       match_price: price,
       maxPlayers: maxPlayers,
       status: 'OPEN'
-    } as any)
+    })
     .select('id')
     .single()
 
-  const newMatch = matchData as { id: string } | null
-  if (matchError || !newMatch) return { error: matchError?.message || 'Error al crear partido.' }
+  if (matchError || !matchData) return { error: matchError?.message || 'Error al crear partido.' }
 
-  await supabase.from('posts').insert({
-    community_id: membership.community_id,
+  await (supabase.from('posts') as any).insert({
+    community_id: activeCommunityId,
     author_id: profile.id, 
     post_type: 'PARTIDO',
     content: `¡Nuevo partido de Fútbol ${type} en ${location}! Fecha: ${dateStr} a las ${timeStr}.`,
-    match_id: newMatch.id
-  } as any)
+    match_id: matchData.id
+  })
 
   revalidatePath('/')
+  revalidatePath('/matches')
   return { success: true }
 }
 
@@ -73,7 +86,6 @@ export async function joinMatch(matchId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Inicia sesión primero.' }
 
-  // 1. Obtenemos los datos y los casteamos para evitar el error 'never'
   const { data } = await supabase.from('matches').select('maxPlayers').eq('id', matchId).single()
   const matchData = data as { maxPlayers: number } | null
 
@@ -83,7 +95,6 @@ export async function joinMatch(matchId: string) {
     return { error: 'El partido ya está lleno.' }
   }
 
-  // 2. Insertamos casteando a 'any' para evitar errores de tipo en la tabla
   const { error } = await (supabase.from('match_players') as any).insert({
     match_id: matchId,
     member_id: user.id
@@ -102,7 +113,6 @@ export async function leaveMatch(matchId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autorizado.' }
 
-  // Casteamos a 'any' para evitar el error 'never' en el delete
   const { error } = await (supabase.from('match_players') as any)
     .delete()
     .eq('match_id', matchId)
@@ -121,7 +131,6 @@ export async function saveLineups(matchId: string, teamBlanco: string[], teamNeg
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autorizado.' }
 
-  // 1. Limpiamos todos los equipos (Casteamos el from a any para evitar el error 'never')
   const { error: err1 } = await (supabase.from('match_players') as any)
     .update({ team: null })
     .eq('match_id', matchId)
@@ -129,7 +138,6 @@ export async function saveLineups(matchId: string, teamBlanco: string[], teamNeg
 
   if (err1) return { error: 'Error al limpiar equipos: ' + err1.message }
 
-  // 2. Guardamos el Equipo Blanco
   if (teamBlanco.length > 0) {
     const { error: errBlanco } = await (supabase.from('match_players') as any)
       .update({ team: 'BLANCO' })
@@ -140,7 +148,6 @@ export async function saveLineups(matchId: string, teamBlanco: string[], teamNeg
     if (errBlanco) return { error: 'Error al guardar Equipo Blanco: ' + errBlanco.message }
   }
 
-  // 3. Guardamos el Equipo Negro
   if (teamNegro.length > 0) {
     const { error: errNegro } = await (supabase.from('match_players') as any)
       .update({ team: 'NEGRO' })
@@ -151,7 +158,6 @@ export async function saveLineups(matchId: string, teamBlanco: string[], teamNeg
     if (errNegro) return { error: 'Error al guardar Equipo Negro: ' + errNegro.message }
   }
 
-  // 4. Cerramos el partido
   await (supabase.from('matches') as any)
     .update({ status: 'CLOSED' })
     .eq('id', matchId)
@@ -167,8 +173,6 @@ export async function togglePayment(matchId: string, memberId: string, currentSt
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autorizado' }
-
-  // TODO: Validar que el usuario que ejecuta esto es ADMIN (lo omito aquí por brevedad)
 
   const { error } = await (supabase.from('match_players') as any)
     .update({ has_paid: !currentStatus })
@@ -221,7 +225,6 @@ export async function submitVotes(matchId: string, votes: { evaluated_id: string
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autorizado' }
 
-  // Preparar el array de objetos para insertar
   const evaluationsToInsert = votes.map(vote => ({
     match_id: matchId,
     evaluator_id: user.id,
@@ -233,9 +236,7 @@ export async function submitVotes(matchId: string, votes: { evaluated_id: string
   const { error } = await (supabase.from('match_evaluations') as any).insert(evaluationsToInsert)
 
   if (error) {
-    if (error.code === '23505') { // Código de error SQL para UNIQUE constraint violation
-      return { error: 'Ya has enviado tus valoraciones para este partido.' }
-    }
+    if (error.code === '23505') return { error: 'Ya has enviado tus valoraciones para este partido.' }
     return { error: 'Error al guardar los votos: ' + error.message }
   }
 
@@ -283,12 +284,10 @@ export async function purgeOldMatches(communityId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autorizado.' }
 
-  // Calculamos la fecha límite (hace 7 días)
   const limitDate = new Date()
   limitDate.setDate(limitDate.getDate() - 7)
-  const dateString = limitDate.toISOString().split('T')[0] // YYYY-MM-DD
+  const dateString = limitDate.toISOString().split('T')[0]
 
-  // Eliminamos partidos cuya fecha sea MENOR que hace 7 días
   const { error } = await (supabase.from('matches') as any)
     .delete()
     .eq('community_id', communityId)

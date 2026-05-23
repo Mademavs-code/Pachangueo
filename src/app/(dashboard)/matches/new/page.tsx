@@ -13,14 +13,24 @@ export default function NewMatchPage() {
 
   async function handleSubmit(formData: FormData) {
     setIsPending(true)
-    const res = await createMatch(formData)
-    if (res.error) {
-      setError(res.error)
+    setError(null)
+    
+    try {
+      const res = await createMatch(formData)
+      
+      if (res.error) {
+        setError(res.error)
+        setIsPending(false)
+      } else {
+        // Envolvemos el push en un timeout para evitar conflictos con Vercel
+        setTimeout(() => {
+          router.push('/matches')
+          router.refresh()
+        }, 150)
+      }
+    } catch (err) {
+      setError('Ocurrió un error inesperado al contactar con el servidor.')
       setIsPending(false)
-    } else {
-      // 🔄 ACTUALIZADO: Ahora redirige a /matches en lugar del tablón /
-      router.push('/matches')
-      router.refresh()
     }
   }
 
@@ -115,7 +125,8 @@ export default function NewMatchPage() {
               <Calendar className="absolute left-4 top-3.5 text-slate-500" size={18} />
               <input 
                 type="date" name="date" required 
-                className="pl-11 w-full bg-slate-900 border-2 border-slate-700 rounded-xl py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors" 
+                className="pl-11 w-full bg-slate-900 border-2 border-slate-700 rounded-xl py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors color-scheme-dark" 
+                style={{ colorScheme: 'dark' }}
               />
             </div>
           </div>
@@ -127,7 +138,8 @@ export default function NewMatchPage() {
               <Clock className="absolute left-4 top-3.5 text-slate-500" size={18} />
               <input 
                 type="time" name="time" required 
-                className="pl-11 w-full bg-slate-900 border-2 border-slate-700 rounded-xl py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors" 
+                className="pl-11 w-full bg-slate-900 border-2 border-slate-700 rounded-xl py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors color-scheme-dark" 
+                style={{ colorScheme: 'dark' }}
               />
             </div>
           </div>
