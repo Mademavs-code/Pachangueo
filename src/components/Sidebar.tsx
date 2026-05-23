@@ -3,8 +3,8 @@
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import React, { useEffect, useState } from 'react' // Añadido React
-import { Home, Trophy, Users, Settings, LogOut, BarChart3, ChevronDown, Check } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { Home, Trophy, Users, Settings, LogOut, BarChart3, ChevronDown, Check, Plus } from 'lucide-react'
 import { setActiveCommunity } from '@/actions/communities'
 
 interface Community { id: string; name: string; }
@@ -78,7 +78,6 @@ export default function Sidebar() {
         <div className="p-6 border-b border-slate-800/60 relative z-20">
           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3">Tu Comunidad</p>
           <div className="relative">
-            {/* LÍNEA CORREGIDA: Sin <style jsx>, usando Tailwind puro */}
             <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="w-full bg-slate-900/50 border border-slate-700/50 rounded-xl p-3 flex items-center justify-between group transition-all duration-300 hover:border-[var(--color-primary)]">
               <div className="flex items-center gap-3 overflow-hidden">
                 <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center font-black text-xs text-white shadow-sm" style={{ backgroundColor: 'var(--color-primary)' }}>
@@ -89,17 +88,30 @@ export default function Sidebar() {
               <ChevronDown size={16} className={`text-slate-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </button>
 
-            {isDropdownOpen && memberships.length > 1 && (
+            {/* Menú Desplegable de Comunidades (Desktop) */}
+            {isDropdownOpen && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)}></div>
                 <div className="absolute top-full left-0 w-full mt-2 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-20 overflow-hidden">
-                  {memberships.map((m) => (
-                    <button key={m.community_id} onClick={() => handleSwitchCommunity(m.community_id)} className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-slate-800 transition-colors border-b border-slate-800/50 last:border-0">
-                      <div className="w-6 h-6 rounded flex items-center justify-center font-black text-[10px] text-white bg-slate-700">{m.communities?.name?.charAt(0)}</div>
-                      <span className={`text-sm flex-1 truncate ${activeMembership?.community_id === m.community_id ? 'font-bold text-white' : 'font-medium text-slate-400'}`}>{m.communities?.name}</span>
-                      {activeMembership?.community_id === m.community_id && <Check size={16} style={{ color: 'var(--color-primary)' }} />}
-                    </button>
-                  ))}
+                  
+                  <div className="max-h-48 overflow-y-auto">
+                    {memberships.map((m) => (
+                      <button key={m.community_id} onClick={() => handleSwitchCommunity(m.community_id)} className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-slate-800 transition-colors border-b border-slate-800/50">
+                        <div className="w-6 h-6 rounded flex items-center justify-center font-black text-[10px] text-white bg-slate-700 shrink-0">{m.communities?.name?.charAt(0)}</div>
+                        <span className={`text-sm flex-1 truncate ${activeMembership?.community_id === m.community_id ? 'font-bold text-white' : 'font-medium text-slate-400'}`}>{m.communities?.name}</span>
+                        {activeMembership?.community_id === m.community_id && <Check size={16} style={{ color: 'var(--color-primary)' }} className="shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* NUEVO: Botón para crear/unirse a otra comunidad */}
+                  <Link href="/setup" onClick={() => setIsDropdownOpen(false)} className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-slate-800 transition-colors bg-slate-900/80 group">
+                    <div className="w-6 h-6 rounded flex items-center justify-center font-black text-slate-400 group-hover:text-white bg-slate-800 group-hover:bg-[var(--color-primary)] transition-all shrink-0">
+                      <Plus size={14} />
+                    </div>
+                    <span className="text-sm flex-1 truncate font-medium text-slate-400 group-hover:text-white transition-colors">Crea tu comunidad</span>
+                  </Link>
+
                 </div>
               </>
             )}
@@ -149,16 +161,29 @@ export default function Sidebar() {
             <ChevronDown size={14} className={`text-slate-500 ml-auto transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
           </button>
 
-          {isDropdownOpen && memberships.length > 1 && (
+          {/* Menú Desplegable de Comunidades (Móvil) */}
+          {isDropdownOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)}></div>
               <div className="absolute top-full left-0 w-full mt-2 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl z-20 overflow-hidden">
-                {memberships.map((m) => (
-                  <button key={m.community_id} onClick={() => handleSwitchCommunity(m.community_id)} className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-slate-800 transition-colors border-b border-slate-800/50 last:border-0">
-                    <div className="w-5 h-5 rounded flex items-center justify-center font-black text-[9px] text-white bg-slate-700">{m.communities?.name?.charAt(0)}</div>
-                    <span className={`text-xs flex-1 truncate ${activeMembership?.community_id === m.community_id ? 'font-bold text-white' : 'font-medium text-slate-400'}`}>{m.communities?.name}</span>
-                  </button>
-                ))}
+                <div className="max-h-48 overflow-y-auto">
+                  {memberships.map((m) => (
+                    <button key={m.community_id} onClick={() => handleSwitchCommunity(m.community_id)} className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-slate-800 transition-colors border-b border-slate-800/50">
+                      <div className="w-5 h-5 rounded flex items-center justify-center font-black text-[9px] text-white bg-slate-700 shrink-0">{m.communities?.name?.charAt(0)}</div>
+                      <span className={`text-xs flex-1 truncate ${activeMembership?.community_id === m.community_id ? 'font-bold text-white' : 'font-medium text-slate-400'}`}>{m.communities?.name}</span>
+                      {activeMembership?.community_id === m.community_id && <Check size={14} style={{ color: 'var(--color-primary)' }} className="shrink-0" />}
+                    </button>
+                  ))}
+                </div>
+
+                {/* NUEVO: Botón para crear/unirse a otra comunidad (Móvil) */}
+                <Link href="/setup" onClick={() => setIsDropdownOpen(false)} className="w-full text-left px-4 py-3 flex items-center gap-3 hover:bg-slate-800 transition-colors bg-slate-900/80 group">
+                  <div className="w-5 h-5 rounded flex items-center justify-center font-black text-slate-400 bg-slate-800 shrink-0">
+                    <Plus size={12} />
+                  </div>
+                  <span className="text-xs flex-1 truncate font-medium text-slate-400">Crear / Unirse a otra</span>
+                </Link>
+
               </div>
             </>
           )}
