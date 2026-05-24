@@ -227,21 +227,21 @@ export default function MembersList({
         </div>
       )}
 
-      {/* MODAL DE DETALLE DEL JUGADOR (CORREGIDO PARA MÓVILES) */}
+      {/* MODAL DE DETALLE DEL JUGADOR (REDISEÑADO Y BLINDADO PARA MÓVILES) */}
       {selectedMember && !editModal && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex items-end md:items-center justify-center md:p-4 backdrop-blur-sm transition-all">
-          <div className="bg-white md:rounded-3xl w-full max-w-4xl shadow-2xl flex flex-col md:flex-row relative h-[90vh] md:h-auto rounded-t-3xl overflow-hidden">
+          <div className="bg-white w-full max-w-4xl shadow-2xl flex flex-col md:flex-row relative max-h-[95vh] md:max-h-[85vh] rounded-t-3xl md:rounded-3xl overflow-hidden">
             
-            {/* BOTÓN CERRAR FIJO */}
+            {/* BOTÓN CERRAR FIJO Y SIEMPRE VISIBLE */}
             <button 
               onClick={() => setSelectedMember(null)} 
-              className="absolute top-4 right-4 z-50 bg-black/50 hover:bg-red-500 text-white p-2 rounded-full transition-colors shadow-lg backdrop-blur-md"
+              className="absolute top-4 right-4 z-50 bg-black/60 hover:bg-red-500 text-white p-2.5 rounded-full transition-colors shadow-lg backdrop-blur-md"
             >
               <X size={20} />
             </button>
 
-            {/* FOTO JUGADOR */}
-            <div className="w-full md:w-[45%] h-64 md:h-auto md:min-h-[500px] bg-gray-100 relative shrink-0">
+            {/* FOTO JUGADOR - Altura fija en móvil para que no empuje el contenido */}
+            <div className="w-full h-56 md:w-[45%] md:h-auto shrink-0 bg-gray-100 relative">
               {selectedMember.avatar_url ? (
                 <img src={selectedMember.avatar_url} alt={selectedMember.alias} className="w-full h-full object-cover object-top" />
               ) : (
@@ -249,95 +249,95 @@ export default function MembersList({
                   {selectedMember.alias.charAt(0).toUpperCase()}
                 </div>
               )}
-              {/* Degradado para que el texto resalte en móvil si la imagen es clara */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent md:hidden pointer-events-none"></div>
+              {/* Degradado para transición suave en móvil */}
+              <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-white to-transparent md:hidden pointer-events-none"></div>
             </div>
 
             {/* CONTENIDO SCROLLABLE */}
-            <div className="w-full md:w-[55%] flex flex-col flex-1 overflow-y-auto bg-white">
-              <div className="p-6 md:p-10 flex flex-col justify-center min-h-full">
+            <div className="flex-1 w-full md:w-[55%] flex flex-col overflow-y-auto bg-white p-6 md:p-10">
                 
-                {/* Cabecera (Sube hacia arriba en móvil para pisar un poco la foto) */}
-                <div className="mb-6 -mt-16 md:mt-0 relative z-10">
-                  <p className="text-[var(--color-primary)] font-black tracking-widest uppercase text-xs md:text-sm mb-1 drop-shadow-md md:drop-shadow-none">
-                    {selectedMember.position !== 'N/A' ? POSITION_NAMES[selectedMember.position].slice(0, -1) : 'Sin Posición'}
-                  </p>
-                  <h2 className="text-4xl font-black text-white md:text-gray-900 leading-none mb-4 drop-shadow-md md:drop-shadow-none">{selectedMember.alias}</h2>
-                  
-                  <div className="flex flex-wrap gap-2 mb-6">
-                    {selectedMember.role === 'ADMIN' && (
-                      <span className="flex items-center gap-1 text-xs font-black uppercase bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded-lg border border-yellow-200 shadow-sm"><Star size={14} className="fill-current"/> Administrador</span>
-                    )}
-                    {selectedMember.is_guest && (
-                      <span className="flex items-center gap-1 text-xs font-black uppercase bg-gray-100 text-gray-500 px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm"><Ghost size={14}/> Invitado</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Grid de Estadísticas */}
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-6">
-                  <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-sm">
-                    <Flame size={20} className="text-orange-500 mb-1" />
-                    <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.matches}</span>
-                    <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Partidos</span>
-                  </div>
-                  <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-sm">
-                    <Star size={20} className="text-blue-500 mb-1 fill-current opacity-20" />
-                    <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.avg_rating || '-'}</span>
-                    <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Nota Media</span>
-                  </div>
-                  <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-sm">
-                    <Trophy size={20} className="text-yellow-500 mb-1" />
-                    <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.mvps}</span>
-                    <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Premios MVP</span>
-                  </div>
-                  <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-sm">
-                    <Clock size={20} className={selectedMember.stats.lates > 0 ? 'text-orange-500' : 'text-gray-400'} />
-                    <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.lates}</span>
-                    <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Tardanzas</span>
-                  </div>
-                  <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-sm">
-                    <UserX size={20} className={selectedMember.stats.no_shows > 0 ? 'text-red-500' : 'text-gray-400'} />
-                    <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.no_shows}</span>
-                    <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Faltas</span>
-                  </div>
-                  <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-sm">
-                    <Coins size={20} className={selectedMember.stats.debts > 0 ? 'text-red-500' : 'text-gray-400'} />
-                    <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.debts}</span>
-                    <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Deudas</span>
-                  </div>
-                </div>
-
-                {/* Controles del Administrador / Edición */}
-                <div className="mt-auto space-y-3 pt-6 border-t border-gray-100 pb-8 md:pb-0">
-                  {(isAdmin || selectedMember.profile_id === currentUserId) && (
-                    <button 
-                      onClick={() => openEditFromDetail(selectedMember)}
-                      className="w-full flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm"
-                    >
-                      <Edit2 size={18} /> Editar Perfil / Foto
-                    </button>
+              {/* Cabecera Clásica y Segura */}
+              <div className="mb-6 relative z-10">
+                <p className="text-[var(--color-primary)] font-black tracking-widest uppercase text-xs md:text-sm mb-1">
+                  {selectedMember.position !== 'N/A' ? POSITION_NAMES[selectedMember.position].slice(0, -1) : 'Sin Posición'}
+                </p>
+                <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-none mb-4">
+                  {selectedMember.alias}
+                </h2>
+                
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {selectedMember.role === 'ADMIN' && (
+                    <span className="flex items-center gap-1 text-xs font-black uppercase bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded-lg border border-yellow-200 shadow-sm"><Star size={14} className="fill-current"/> Administrador</span>
                   )}
-
-                  {isAdmin && selectedMember.profile_id !== currentUserId && (
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      {selectedMember.role === 'MEMBER' ? (
-                        <button onClick={() => handleRoleChange(selectedMember.profile_id, 'ADMIN')} disabled={loadingAction === selectedMember.profile_id} className="flex-1 flex items-center justify-center gap-2 bg-gray-50 hover:bg-yellow-50 hover:text-yellow-700 text-gray-600 font-bold py-3.5 rounded-xl text-xs transition-colors shadow-sm">
-                          {loadingAction === selectedMember.profile_id ? <Loader2 size={16} className="animate-spin" /> : <Shield size={16} />} Ascender Admin
-                        </button>
-                      ) : (
-                        <button onClick={() => handleRoleChange(selectedMember.profile_id, 'MEMBER')} disabled={loadingAction === selectedMember.profile_id} className="flex-1 flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-200 text-gray-600 font-bold py-3.5 rounded-xl text-xs transition-colors shadow-sm">
-                          {loadingAction === selectedMember.profile_id ? <Loader2 size={16} className="animate-spin" /> : <ShieldOff size={16} />} Quitar Admin
-                        </button>
-                      )}
-                      <button onClick={() => handleKick(selectedMember.profile_id, selectedMember.alias)} disabled={loadingAction === selectedMember.profile_id} className="p-3.5 sm:w-auto w-full flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-500 hover:text-white rounded-xl transition-colors shadow-sm" title="Expulsar">
-                        <UserX size={18} /> <span className="sm:hidden ml-2 font-bold text-xs">Expulsar</span>
-                      </button>
-                    </div>
+                  {selectedMember.is_guest && (
+                    <span className="flex items-center gap-1 text-xs font-black uppercase bg-gray-100 text-gray-500 px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm"><Ghost size={14}/> Invitado</span>
                   )}
                 </div>
-
               </div>
+
+              {/* Grid de Estadísticas */}
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-6">
+                <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-sm">
+                  <Flame size={20} className="text-orange-500 mb-1" />
+                  <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.matches}</span>
+                  <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Partidos</span>
+                </div>
+                <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-sm">
+                  <Star size={20} className="text-blue-500 mb-1 fill-current opacity-20" />
+                  <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.avg_rating || '-'}</span>
+                  <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Nota Media</span>
+                </div>
+                <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-sm">
+                  <Trophy size={20} className="text-yellow-500 mb-1" />
+                  <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.mvps}</span>
+                  <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Premios MVP</span>
+                </div>
+                <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-sm">
+                  <Clock size={20} className={selectedMember.stats.lates > 0 ? 'text-orange-500' : 'text-gray-400'} />
+                  <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.lates}</span>
+                  <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Tardanzas</span>
+                </div>
+                <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-sm">
+                  <UserX size={20} className={selectedMember.stats.no_shows > 0 ? 'text-red-500' : 'text-gray-400'} />
+                  <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.no_shows}</span>
+                  <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Faltas</span>
+                </div>
+                <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-sm">
+                  <Coins size={20} className={selectedMember.stats.debts > 0 ? 'text-red-500' : 'text-gray-400'} />
+                  <span className="text-2xl font-black text-gray-900 leading-none">{selectedMember.stats.debts}</span>
+                  <span className="text-[10px] uppercase font-bold text-gray-400 mt-1">Deudas</span>
+                </div>
+              </div>
+
+              {/* Controles del Administrador / Edición */}
+              <div className="mt-auto pt-6 border-t border-gray-100 pb-8 md:pb-0 space-y-3">
+                {(isAdmin || selectedMember.profile_id === currentUserId) && (
+                  <button 
+                    onClick={() => openEditFromDetail(selectedMember)}
+                    className="w-full flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 font-bold py-3.5 px-4 rounded-xl transition-colors shadow-sm"
+                  >
+                    <Edit2 size={18} /> Editar Perfil / Foto
+                  </button>
+                )}
+
+                {isAdmin && selectedMember.profile_id !== currentUserId && (
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {selectedMember.role === 'MEMBER' ? (
+                      <button onClick={() => handleRoleChange(selectedMember.profile_id, 'ADMIN')} disabled={loadingAction === selectedMember.profile_id} className="flex-1 flex items-center justify-center gap-2 bg-gray-50 hover:bg-yellow-50 hover:text-yellow-700 text-gray-600 font-bold py-3.5 rounded-xl text-xs transition-colors shadow-sm">
+                        {loadingAction === selectedMember.profile_id ? <Loader2 size={16} className="animate-spin" /> : <Shield size={16} />} Ascender Admin
+                      </button>
+                    ) : (
+                      <button onClick={() => handleRoleChange(selectedMember.profile_id, 'MEMBER')} disabled={loadingAction === selectedMember.profile_id} className="flex-1 flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-200 text-gray-600 font-bold py-3.5 rounded-xl text-xs transition-colors shadow-sm">
+                        {loadingAction === selectedMember.profile_id ? <Loader2 size={16} className="animate-spin" /> : <ShieldOff size={16} />} Quitar Admin
+                      </button>
+                    )}
+                    <button onClick={() => handleKick(selectedMember.profile_id, selectedMember.alias)} disabled={loadingAction === selectedMember.profile_id} className="p-3.5 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-500 hover:text-white rounded-xl transition-colors shadow-sm" title="Expulsar">
+                      <UserX size={18} /> <span className="sm:hidden ml-2 font-bold text-xs">Expulsar</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
         </div>
