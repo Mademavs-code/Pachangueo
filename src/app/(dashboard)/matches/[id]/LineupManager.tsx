@@ -137,7 +137,7 @@ export default function LineupManager({ matchId, initialPlayers }: { matchId: st
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mt-8">
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <h2 className="text-xl font-bold text-gray-900">Gestor de Alineaciones PRO</h2>
+        <h2 className="text-xl font-bold text-gray-900">Gestor de Alineaciones</h2>
         
         <div className="flex gap-2">
           <button onClick={handleClear} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors">

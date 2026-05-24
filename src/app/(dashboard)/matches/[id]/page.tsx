@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Calendar, MapPin, Shield, Users, Euro, Clock, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
+import { Calendar, MapPin, Shield, Users, Euro, Clock, CheckCircle2, XCircle, AlertTriangle, Trophy, Star } from 'lucide-react'
 import MatchButtons from './MatchButtons'
 import LineupManager from './LineupManager'
 import { togglePayment, updateAttendance } from '@/actions/matches'
@@ -12,93 +12,71 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('id, is_guest')
-    .eq('id', user.id)
-    .single()
+  const { data: profileData } = await supabase.from('profiles').select('id, is_guest').eq('id', user.id).single()
 
   if (!profileData) redirect('/setup')
   const profileId = (profileData as { id: string }).id
   const isGuest = (profileData as { is_guest: boolean }).is_guest
 
-  const { data: matchData } = await supabase
-    .from('matches')
-    .select('*')
-    .eq('id', matchId)
-    .single()
-
+  const { data: matchData } = await supabase.from('matches').select('*').eq('id', matchId).single()
   if (!matchData) return <div className="p-8 text-center font-medium text-gray-500">Partido no encontrado</div>
   const match = matchData as any
 
-  const { data: membershipData } = await supabase
-    .from('community_members')
-    .select('role')
-    .eq('profile_id', profileId)
-    .eq('community_id', match.community_id)
-    .single()
+  const rawDate = match.match_date || ''
+  const formattedDate = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate
+  const formattedTime = match.match_time ? match.match_time.substring(0, 5) : ''
 
+  const { data: membershipData } = await supabase.from('community_members').select('role').eq('profile_id', profileId).eq('community_id', match.community_id).single()
   const membership = membershipData as { role: string } | null
   const isAdmin = membership?.role === 'ADMIN'
 
   const { data: participants } = await supabase
     .from('match_players')
-    .select(`
-      member_id,
-      team,
-      has_paid,
-      attendance,
-      profiles (
-        alias,
-        community_members ( alias, preferred_position, community_id )
-      )
-    `)
+    .select(`member_id, team, has_paid, attendance, profiles ( alias, avatar_url, community_members ( alias, preferred_position, community_id ) )`)
     .eq('match_id', matchId)
 
-  // ALGORITMO REAL: Obtener valoraciones históricas de los inscritos
   const playerIds = (participants as any[])?.map(p => p.member_id) || []
-  let evaluations: any[] = []
+  let allTimeEvaluations: any[] = []
   
   if (playerIds.length > 0) {
-    const { data: evalsData } = await supabase
-      .from('match_evaluations')
-      .select('evaluated_id, rating, is_mvp')
-      .in('evaluated_id', playerIds)
-    evaluations = evalsData || []
+    const { data: evalsData } = await supabase.from('match_evaluations').select('evaluated_id, rating').in('evaluated_id', playerIds)
+    allTimeEvaluations = evalsData || []
   }
 
-  const playerStats: Record<string, { totalRating: number; count: number; mvps: number }> = {}
-  playerIds.forEach(id => playerStats[id] = { totalRating: 0, count: 0, mvps: 0 })
+  const playerStats: Record<string, { totalRating: number; count: number }> = {}
+  playerIds.forEach(id => playerStats[id] = { totalRating: 0, count: 0 })
 
-  evaluations.forEach(ev => {
+  allTimeEvaluations.forEach(ev => {
     if (playerStats[ev.evaluated_id]) {
       playerStats[ev.evaluated_id].totalRating += ev.rating
       playerStats[ev.evaluated_id].count += 1
-      if (ev.is_mvp) playerStats[ev.evaluated_id].mvps += 1
     }
   })
 
+  const { data: matchEvalsData } = await supabase.from('match_evaluations').select('*').eq('match_id', matchId)
+  const matchEvaluations = (matchEvalsData as any[]) || []
+  const hasVoted = matchEvaluations.some(e => e.evaluator_id === profileId)
+
   const players = (participants as any[])?.map(p => {
-    const communityInfo = p.profiles?.community_members?.find(
-      (m: any) => m.community_id === match.community_id
-    )
+    const profileInfo = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
+    const communityInfo = profileInfo?.community_members?.find((m: any) => m.community_id === match.community_id)
     
-    // Cálculo de valoración real: Nota Media pura (sin sesgos de MVP)
     const stats = playerStats[p.member_id]
-    const finalRating = stats.count > 0 
-      ? Number((stats.totalRating / stats.count).toFixed(1)) 
-      : 5 // 5 por defecto si es nuevo
+    const finalRating = stats.count > 0 ? Number((stats.totalRating / stats.count).toFixed(1)) : 5
+
+    const evalsForMeThisMatch = matchEvaluations.filter(e => e.evaluated_id === p.member_id)
+    const matchMvpVotes = evalsForMeThisMatch.filter(e => e.is_mvp).length
+    const matchAvgRating = evalsForMeThisMatch.length > 0 ? Number((evalsForMeThisMatch.reduce((acc, curr) => acc + curr.rating, 0) / evalsForMeThisMatch.length).toFixed(1)) : 0
 
     return {
-      member_id: p.member_id,
-      team: p.team,
-      has_paid: p.has_paid || false,
-      attendance: p.attendance || 'PENDING',
-      alias: communityInfo?.alias || p.profiles?.alias || 'Jugador',
-      position: communityInfo?.preferred_position || 'N/A',
-      rating: finalRating
+      member_id: p.member_id, team: p.team, has_paid: p.has_paid || false, attendance: p.attendance || 'PENDING',
+      alias: communityInfo?.alias || profileInfo?.alias || 'Jugador', avatar_url: profileInfo?.avatar_url || null,
+      position: communityInfo?.preferred_position || 'N/A', rating: finalRating, matchMvpVotes, matchAvgRating
     }
   }) || []
+
+  const matchResults = [...players].sort((a, b) => b.matchMvpVotes - a.matchMvpVotes || b.matchAvgRating - a.matchAvgRating)
+  const mvp = matchResults.length > 0 && matchResults[0].matchMvpVotes > 0 ? matchResults[0] : null
 
   const isJoined = players.some(p => p.member_id === profileId)
   const maxPlayers = match.maxPlayers || 14
@@ -107,6 +85,77 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
 
   return (
     <div className="max-w-5xl mx-auto py-8 px-4 space-y-8">
+      
+      {/* SECCIÓN RESULTADOS (ADAPTADO AL COLOR DEL CLUB) */}
+      {match.status === 'CLOSED' && (hasVoted || isAdmin) && matchEvaluations.length > 0 && (
+        <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6 md:p-8 relative overflow-hidden mb-8">
+          {/* Brillo de fondo con el color de la comunidad */}
+          <div className="absolute top-0 right-0 w-[400px] h-[400px] blur-[100px] pointer-events-none opacity-10" style={{ backgroundColor: 'var(--color-primary)' }}></div>
+          
+          <h2 className="text-2xl font-black text-gray-900 flex items-center gap-3 mb-8 relative z-10">
+            <Trophy size={28} style={{ color: 'var(--color-primary)' }} /> Resultados del Partido
+          </h2>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative z-10">
+            {/* Tarjeta del MVP */}
+            {mvp ? (
+              <div 
+                className="rounded-3xl border p-6 flex flex-col items-center justify-center text-center shadow-sm"
+                style={{ 
+                  borderColor: 'color-mix(in srgb, var(--color-primary) 20%, transparent)',
+                  background: 'linear-gradient(to bottom, color-mix(in srgb, var(--color-primary) 5%, white), white)'
+                }}
+              >
+                <p className="text-xs font-black uppercase tracking-widest mb-4 flex items-center gap-1" style={{ color: 'var(--color-primary)' }}>
+                  <Trophy size={14}/> MVP del Partido
+                </p>
+                {mvp.avatar_url ? (
+                  <img src={mvp.avatar_url} alt={mvp.alias} className="w-24 h-24 rounded-full border-4 shadow-md mb-4 object-cover" style={{ borderColor: 'var(--color-primary)' }} />
+                ) : (
+                  <div className="w-24 h-24 rounded-full border-4 bg-gray-50 flex items-center justify-center text-3xl font-black mb-4 shadow-md" style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
+                    {mvp.alias.charAt(0)}
+                  </div>
+                )}
+                <h3 className="text-3xl font-black text-gray-900">{mvp.alias}</h3>
+                <div className="flex gap-3 mt-4">
+                  <span className="font-bold px-4 py-2 rounded-xl text-sm border shadow-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, transparent)', color: 'var(--color-primary)', borderColor: 'color-mix(in srgb, var(--color-primary) 20%, transparent)' }}>
+                    {mvp.matchMvpVotes} Votos
+                  </span>
+                  <span className="bg-gray-100 text-gray-600 font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-1 border border-gray-200">
+                    <Star size={14} className="fill-current text-gray-400"/> {mvp.matchAvgRating}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-50 rounded-3xl border border-dashed border-gray-200 p-6 flex items-center justify-center text-gray-400 font-medium">Aún no hay votos MVP.</div>
+            )}
+
+            {/* Resto de calificaciones */}
+            <div className="space-y-3">
+              <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Mejores Puntuaciones</p>
+              {matchResults.slice(0, 5).map((p, idx) => {
+                if (p.matchAvgRating === 0) return null;
+                return (
+                  <div key={p.member_id} className="flex items-center justify-between bg-white p-4 rounded-2xl border border-gray-100 shadow-sm transition-all hover:border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <span className="text-gray-400 font-black text-sm w-4">{idx + 1}</span>
+                      <span className="font-bold text-gray-900">{p.alias}</span>
+                    </div>
+                    <span 
+                      className="font-black px-3 py-1 rounded-lg border shadow-sm"
+                      style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, transparent)', color: 'var(--color-primary)', borderColor: 'color-mix(in srgb, var(--color-primary) 20%, transparent)' }}
+                    >
+                      {p.matchAvgRating} pts
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CABECERA NORMAL DEL PARTIDO */}
       <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="bg-gradient-to-r from-[var(--color-primary)] to-gray-900 p-8 text-white">
           <div className="flex items-center gap-5">
@@ -125,11 +174,11 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
         <div className="p-8 grid grid-cols-2 lg:grid-cols-4 gap-8 bg-gray-50/50 border-b border-gray-100">
            <div className="space-y-1">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5"><Calendar size={12}/> Fecha</span>
-            <p className="text-lg font-bold text-gray-900">{match.match_date}</p>
+            <p className="text-lg font-bold text-gray-900">{formattedDate}</p>
           </div>
           <div className="space-y-1">
             <span className="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-widest flex items-center gap-1.5"><Clock size={12}/> Hora</span>
-            <p className="text-lg font-bold text-gray-900">{match.match_time} h</p>
+            <p className="text-lg font-bold text-gray-900">{formattedTime} h</p>
           </div>
           <div className="space-y-1">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5"><Users size={12}/> Aforo máximo</span>
@@ -151,20 +200,14 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
           </div>
           
           <MatchButtons 
-            matchId={matchId} 
-            isJoined={isJoined} 
-            isFull={isFull} 
-            isAdmin={isAdmin} 
-            hasTeams={hasTeams}
-            status={match.status || 'OPEN'}
-            isGuest={isGuest}
-            players={players}
-            currentUserId={profileId}
-            match={match}
+            matchId={matchId} isJoined={isJoined} isFull={isFull} isAdmin={isAdmin} hasTeams={hasTeams}
+            status={match.status || 'OPEN'} isGuest={isGuest} players={players} currentUserId={profileId}
+            match={{...match, match_date: formattedDate, match_time: formattedTime}} hasVoted={hasVoted}
           />
         </div>
       </div>
 
+      {/* LISTA DE CONVOCADOS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className={`${isAdmin && isFull ? 'lg:col-span-12' : 'lg:col-span-12'} space-y-6`}>
           <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6">
@@ -185,7 +228,7 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
                     <span className="text-xs font-black text-gray-300 w-4">{idx + 1}</span>
                     <div className="flex-1">
                       <p className="font-bold text-gray-900 leading-tight">{p.alias}</p>
-                      <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-gray-100 text-gray-500`}>{p.position}</span>
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{p.position}</span>
                     </div>
 
                     {isAdmin && match.status !== 'CLOSED' ? (

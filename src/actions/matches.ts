@@ -298,3 +298,26 @@ export async function purgeOldMatches(communityId: string) {
   revalidatePath(`/matches`)
   return { success: true }
 }
+
+// ==========================================
+// 10. ELIMINAR PARTIDO (ADMIN)
+// ==========================================
+export async function deleteMatch(matchId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autorizado' }
+
+  // Borramos en cascada manual por seguridad (evaluaciones, jugadores y posts asociados)
+  await (supabase.from('match_evaluations') as any).delete().eq('match_id', matchId)
+  await (supabase.from('match_players') as any).delete().eq('match_id', matchId)
+  await (supabase.from('posts') as any).delete().eq('match_id', matchId)
+  
+  // Finalmente borramos el partido
+  const { error } = await (supabase.from('matches') as any).delete().eq('id', matchId)
+  
+  if (error) return { error: 'Error al eliminar el partido: ' + error.message }
+  
+  revalidatePath('/matches')
+  revalidatePath('/')
+  return { success: true }
+}
