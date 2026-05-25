@@ -24,3 +24,13 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6 !important;
+}
+
+/* Forzar que el texto del botón sea siempre blanco si tiene bg-primary */
+button[style*="--color-primary"] {
+  color: white !important;
+}

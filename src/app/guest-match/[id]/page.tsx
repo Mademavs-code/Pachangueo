@@ -126,12 +126,23 @@ export default function GuestJoinPage() {
               </div>
             </div>
 
+            // ... (resto del archivo igual) ...
+
             <button 
-              type="submit" disabled={issubmitting}
+              type="submit" 
+              disabled={issubmitting}
               className="w-full text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-md flex justify-center items-center gap-2 disabled:opacity-50"
               style={{ backgroundColor: 'var(--color-primary)' }}
             >
-              {issubmitting ? <><Loader2 className="animate-spin" size={20} /> Inscribiendo...</> : <><UserPlus size={20} /> Unirme al Partido</>}
+              {issubmitting ? (
+                <>
+                  <Loader2 className="animate-spin" size={20} /> Inscribiendo...
+                </>
+              ) : (
+                <>
+                  <UserPlus size={20} /> Unirme al Partido
+                </>
+              )}
             </button>
             <p className="text-xs text-center text-gray-400 mt-4">
               Al unirte entrarás como invitado para este encuentro específico.
