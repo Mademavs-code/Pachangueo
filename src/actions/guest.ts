@@ -6,6 +6,7 @@ export async function joinAsGuest(formData: FormData) {
   const supabase = await createClient()
   const matchId = formData.get('match_id') as string
   const alias = formData.get('alias') as string
+  const rating = parseInt(formData.get('rating') as string || '5') // <-- NUEVO: Recibimos la nota
 
   if (!alias || alias.trim().length === 0) return { error: 'El alias es obligatorio.' }
 
@@ -19,7 +20,6 @@ export async function joinAsGuest(formData: FormData) {
   const dummyEmail = `guest_${Date.now()}_${Math.random().toString(36).substring(2,7)}@guest.local`
   const dummyPassword = Math.random().toString(36).slice(-10) + "A1!"
   
-  // 1. Crear usuario en la autenticación de Supabase
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: dummyEmail,
     password: dummyPassword
@@ -31,16 +31,14 @@ export async function joinAsGuest(formData: FormData) {
     return { error: 'Supabase bloqueó el acceso. Ve a Supabase > Authentication > Providers > Email y desactiva "Confirm Email".' }
   }
 
-  // 2. Insertar perfil incluyendo el email para cumplir con la restricción NOT NULL de tu BD
   const { error: profileError } = await (supabase.from('profiles') as any).upsert({
     id: authData.user.id,
     alias: alias.trim(),
-    email: dummyEmail, // 🛡️ ¡Añadimos esto para solucionar el error de columna obligatoria!
+    email: dummyEmail, 
     is_guest: true
   })
   if (profileError) return { error: 'Error al crear perfil: ' + profileError.message }
 
-  // 3. Insertar membresía temporal
   const { error: memberError } = await (supabase.from('community_members') as any).insert({
     community_id: match.community_id,
     profile_id: authData.user.id,
@@ -49,7 +47,6 @@ export async function joinAsGuest(formData: FormData) {
   })
   if (memberError) return { error: 'Error al vincular comunidad: ' + memberError.message }
 
-  // 4. Inscribir al partido
   const { error: matchError } = await (supabase.from('match_players') as any).insert({
     match_id: matchId,
     member_id: authData.user.id,
@@ -57,6 +54,15 @@ export async function joinAsGuest(formData: FormData) {
     attendance: 'PENDING'
   })
   if (matchError) return { error: 'Error al inscribir en el partido: ' + matchError.message }
+
+  // 👉 NUEVO: Inyectamos la nota temporal como autoevaluación (el algoritmo la leerá y luego la destruirá)
+  await (supabase.from('match_evaluations') as any).insert({
+    match_id: matchId,
+    evaluator_id: authData.user.id,
+    evaluated_id: authData.user.id,
+    rating: rating,
+    is_mvp: false
+  })
 
   return { success: true, matchId: matchId }
 }

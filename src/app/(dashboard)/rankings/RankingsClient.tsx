@@ -100,7 +100,7 @@ export default function RankingsClient({
             className="flex items-center gap-2 text-white font-black py-4 px-8 rounded-full transition-all transform hover:scale-105 border-2 border-white/20 uppercase tracking-widest shadow-lg"
             style={{ backgroundColor: 'var(--color-primary)', boxShadow: '0 0 20px color-mix(in srgb, var(--color-primary) 60%, transparent)' }}
           >
-            <Plus size={20} /> Forjar Ranking
+            <Plus size={20} /> Crear Ranking
           </button>
         </div>
       )}
@@ -384,7 +384,7 @@ export default function RankingsClient({
         <div className="fixed inset-0 bg-slate-950/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-slate-900 rounded-[2rem] w-full max-w-md overflow-hidden shadow-2xl border border-slate-700">
             <div className="bg-slate-800 p-6 flex justify-between items-center text-white border-b border-slate-700">
-              <h3 className="text-xl font-black flex items-center gap-2" style={{ color: 'var(--color-primary)' }}><BarChart3 size={24}/> {rankingModal.mode === 'create' ? 'Forjar Ranking' : 'Editar Ranking'}</h3>
+              <h3 className="text-xl font-black flex items-center gap-2" style={{ color: 'var(--color-primary)' }}><BarChart3 size={24}/> {rankingModal.mode === 'create' ? 'Crear Ranking' : 'Editar Ranking'}</h3>
               <button onClick={() => setRankingModal(null)} className="text-slate-400 hover:text-white bg-slate-700/50 p-2 rounded-full transition-colors"><X size={20} /></button>
             </div>
 

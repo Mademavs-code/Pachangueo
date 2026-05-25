@@ -11,10 +11,22 @@ export default function NewMatchPage() {
   const [isPending, setIsPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const todayStr = new Date().toISOString().split('T')[0]
+
   async function handleSubmit(formData: FormData) {
     setIsPending(true)
     setError(null)
     
+    const dateStr = formData.get('date') as string
+    const timeStr = formData.get('time') as string
+    const matchDateTime = new Date(`${dateStr}T${timeStr}`)
+    
+    if (matchDateTime < new Date()) {
+      setError('La fecha y hora del partido ya han pasado. Selecciona una hora futura.')
+      setIsPending(false)
+      return
+    }
+
     try {
       const res = await createMatch(formData)
       
@@ -22,7 +34,6 @@ export default function NewMatchPage() {
         setError(res.error)
         setIsPending(false)
       } else {
-        // Envolvemos el push en un timeout para evitar conflictos con Vercel
         setTimeout(() => {
           router.push('/matches')
           router.refresh()
@@ -37,12 +48,10 @@ export default function NewMatchPage() {
   return (
     <div className="max-w-3xl mx-auto pt-4 px-2 md:px-4 pb-12 space-y-8">
       
-      {/* Botón Volver */}
       <Link href="/matches" className="inline-flex items-center gap-2 text-slate-400 hover:text-white transition-colors font-medium text-sm">
         <ArrowLeft size={16} /> Volver a Partidos
       </Link>
 
-      {/* Cabecera Espectacular */}
       <div className="bg-[#0a0f1c] p-6 md:p-8 rounded-3xl shadow-xl border border-slate-800 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div 
           className="absolute -top-24 -right-24 w-64 h-64 opacity-10 rounded-full blur-3xl pointer-events-none" 
@@ -67,7 +76,6 @@ export default function NewMatchPage() {
         </div>
       </div>
       
-      {/* Formulario Premium */}
       <form 
         action={handleSubmit} 
         className="bg-[#0f172a] p-6 md:p-8 rounded-[2rem] shadow-2xl border border-slate-800 space-y-8 relative overflow-hidden group transition-all" 
@@ -75,7 +83,6 @@ export default function NewMatchPage() {
       >
         <style jsx>{`form:hover { border-color: var(--hover-border-color); }`}</style>
         
-        {/* Brillo de fondo sutil */}
         <div 
           className="absolute top-0 right-0 w-[500px] h-[500px] blur-[100px] pointer-events-none transition-opacity opacity-5 group-hover:opacity-10" 
           style={{ backgroundColor: 'var(--color-primary)' }}
@@ -89,7 +96,6 @@ export default function NewMatchPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
           
-          {/* Ubicación */}
           <div className="space-y-2">
             <label className="block text-sm font-bold text-slate-300">Ubicación</label>
             <div className="relative">
@@ -102,15 +108,16 @@ export default function NewMatchPage() {
             </div>
           </div>
 
-          {/* Tipo de Juego */}
           <div className="space-y-2">
-            <label className="block text-sm font-bold text-slate-300">Tipo de Juego</label>
+            <label className="block text-sm font-bold text-slate-300">Modalidad</label>
             <div className="relative">
               <Users className="absolute left-4 top-3.5 text-slate-500" size={18} />
               <select 
                 name="type" 
                 className="pl-11 w-full bg-slate-900 border-2 border-slate-700 rounded-xl py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors"
               >
+                <option value="[PRUEBA]">🧪 [PRUEBA] Demo (2v2)</option>
+                <option value="5">Fútbol 5</option>
                 <option value="7">Fútbol 7</option>
                 <option value="11">Fútbol 11</option>
                 <option value="Sala">Fútbol Sala</option>
@@ -118,20 +125,19 @@ export default function NewMatchPage() {
             </div>
           </div>
 
-          {/* Fecha */}
           <div className="space-y-2">
             <label className="block text-sm font-bold text-slate-300">Fecha</label>
             <div className="relative">
               <Calendar className="absolute left-4 top-3.5 text-slate-500" size={18} />
               <input 
                 type="date" name="date" required 
+                min={todayStr}
                 className="pl-11 w-full bg-slate-900 border-2 border-slate-700 rounded-xl py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors color-scheme-dark" 
                 style={{ colorScheme: 'dark' }}
               />
             </div>
           </div>
 
-          {/* Hora */}
           <div className="space-y-2">
             <label className="block text-sm font-bold text-slate-300">Hora</label>
             <div className="relative">
@@ -144,7 +150,6 @@ export default function NewMatchPage() {
             </div>
           </div>
 
-          {/* Precio */}
           <div className="space-y-2">
             <label className="block text-sm font-bold text-slate-300">Precio por persona (€)</label>
             <div className="relative">
@@ -157,20 +162,8 @@ export default function NewMatchPage() {
             </div>
           </div>
 
-          {/* Límite Jugadores */}
-          <div className="space-y-2">
-            <label className="block text-sm font-bold text-slate-300">Límite de Jugadores</label>
-            <div className="relative">
-              <Users className="absolute left-4 top-3.5 text-slate-500" size={18} />
-              <input 
-                type="number" name="maxPlayers" defaultValue="14" 
-                className="pl-11 w-full bg-slate-900 border-2 border-slate-700 rounded-xl py-3 text-white focus:outline-none focus:border-[var(--color-primary)] transition-colors" 
-              />
-            </div>
-          </div>
         </div>
 
-        {/* Botón de Submit */}
         <div className="pt-6 relative z-10 border-t border-slate-800">
           <button
             type="submit"

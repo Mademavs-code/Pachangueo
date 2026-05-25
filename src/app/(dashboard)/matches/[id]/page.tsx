@@ -32,21 +32,29 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
 
   const { data: participants } = await supabase
     .from('match_players')
-    .select(`member_id, team, has_paid, attendance, profiles ( alias, avatar_url, community_members ( alias, preferred_position, community_id ) )`)
+    .select(`member_id, team, has_paid, attendance, profiles ( alias, avatar_url, is_guest, community_members ( alias, preferred_position, community_id ) )`)
     .eq('match_id', matchId)
 
   const playerIds = (participants as any[])?.map(p => p.member_id) || []
   let allTimeEvaluations: any[] = []
   
   if (playerIds.length > 0) {
-    const { data: evalsData } = await supabase.from('match_evaluations').select('evaluated_id, rating').in('evaluated_id', playerIds)
+    // 👉 NUEVO: Traemos evaluator_id para pillar el truco de la autoevaluación
+    const { data: evalsData } = await supabase.from('match_evaluations').select('evaluator_id, evaluated_id, rating').in('evaluated_id', playerIds)
     allTimeEvaluations = evalsData || []
   }
 
   const playerStats: Record<string, { totalRating: number; count: number }> = {}
+  const guestTempRatings: Record<string, number> = {} // 👉 NUEVO
+  
   playerIds.forEach(id => playerStats[id] = { totalRating: 0, count: 0 })
 
   allTimeEvaluations.forEach(ev => {
+    // 👉 NUEVO: Si es una autoevaluación de invitado, la separamos y no manchamos el histórico
+    if (ev.evaluator_id === ev.evaluated_id) {
+      guestTempRatings[ev.evaluated_id] = ev.rating;
+      return; 
+    }
     if (playerStats[ev.evaluated_id]) {
       playerStats[ev.evaluated_id].totalRating += ev.rating
       playerStats[ev.evaluated_id].count += 1
@@ -54,7 +62,8 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
   })
 
   const { data: matchEvalsData } = await supabase.from('match_evaluations').select('*').eq('match_id', matchId)
-  const matchEvaluations = (matchEvalsData as any[]) || []
+  // 👉 NUEVO: Ocultamos la autoevaluación a los MVP de este partido
+  const matchEvaluations = (matchEvalsData as any[])?.filter(e => e.evaluator_id !== e.evaluated_id) || []
   const hasVoted = matchEvaluations.some(e => e.evaluator_id === profileId)
 
   const players = (participants as any[])?.map(p => {
@@ -62,7 +71,12 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
     const communityInfo = profileInfo?.community_members?.find((m: any) => m.community_id === match.community_id)
     
     const stats = playerStats[p.member_id]
-    const finalRating = stats.count > 0 ? Number((stats.totalRating / stats.count).toFixed(1)) : 5
+    let finalRating = stats.count > 0 ? Number((stats.totalRating / stats.count).toFixed(1)) : 5
+
+    // 👉 NUEVO: Si es invitado y tiene nota temporal, se la asignamos para que el LineupManager la lea
+    if (profileInfo?.is_guest && guestTempRatings[p.member_id]) {
+      finalRating = guestTempRatings[p.member_id];
+    }
 
     const evalsForMeThisMatch = matchEvaluations.filter(e => e.evaluated_id === p.member_id)
     const matchMvpVotes = evalsForMeThisMatch.filter(e => e.is_mvp).length
@@ -228,7 +242,7 @@ export default async function MatchDetailPage(props: { params: Promise<{ id: str
                     <span className="text-xs font-black text-gray-300 w-4">{idx + 1}</span>
                     <div className="flex-1">
                       <p className="font-bold text-gray-900 leading-tight">{p.alias}</p>
-                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{p.position}</span>
+                      <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-gray-100 text-gray-500`}>{p.position}</span>
                     </div>
 
                     {isAdmin && match.status !== 'CLOSED' ? (

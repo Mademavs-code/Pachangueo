@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { cookies } from 'next/headers' // <-- NUEVO IMPORT IMPRESCINDIBLE
+import { cookies } from 'next/headers' 
 
 // ==========================================
 // 1. CREAR PARTIDO Y POST
@@ -17,7 +17,6 @@ export async function createMatch(formData: FormData) {
   const profile = profileData as { id: string } | null
   if (!profile) return { error: 'Perfil no encontrado.' }
 
-  // 🚨 CORRECCIÓN: Quitamos el .single() porque el usuario puede estar en varias comunidades
   const { data: membershipsData } = await supabase
     .from('community_members')
     .select('community_id, role')
@@ -25,7 +24,6 @@ export async function createMatch(formData: FormData) {
 
   const memberships = (membershipsData as { community_id: string, role: string }[]) || []
   
-  // Obtenemos la comunidad activa desde las cookies
   const cookieStore = await cookies()
   const cookieCommunityId = cookieStore.get('pachangueo_active_community')?.value
   
@@ -34,7 +32,6 @@ export async function createMatch(formData: FormData) {
     activeCommunityId = memberships[0].community_id
   }
 
-  // Buscamos si el usuario es ADMIN en esa comunidad en concreto
   const activeMembership = memberships.find(m => m.community_id === activeCommunityId)
   if (!activeMembership || activeMembership.role !== 'ADMIN') {
     return { error: 'Solo los administradores pueden crear partidos en esta comunidad.' }
@@ -45,9 +42,19 @@ export async function createMatch(formData: FormData) {
   const dateStr = formData.get('date') as string
   const timeStr = formData.get('time') as string
   const price = parseFloat(formData.get('price') as string || '0')
-  const maxPlayers = parseInt(formData.get('maxPlayers') as string || '14')
 
-  // Inserción blindada
+  // 👉 CÁLCULO DE AFORO CON MODO PRUEBA
+  let maxPlayers = 14;
+  if (type === '[PRUEBA]') maxPlayers = 4;
+  else if (type === '5' || type === 'Sala') maxPlayers = 10;
+  else if (type === '7') maxPlayers = 14;
+  else if (type === '11') maxPlayers = 22;
+
+  const matchDateTime = new Date(`${dateStr}T${timeStr}`)
+  if (matchDateTime < new Date()) {
+    return { error: 'No puedes programar un partido en una fecha y hora del pasado.' }
+  }
+
   const { data: matchData, error: matchError } = await (supabase.from('matches') as any)
     .insert({
       community_id: activeCommunityId,
@@ -256,7 +263,18 @@ export async function updateMatch(matchId: string, formData: FormData) {
   const dateStr = formData.get('date') as string
   const timeStr = formData.get('time') as string
   const price = parseFloat(formData.get('price') as string || '0')
-  const maxPlayers = parseInt(formData.get('maxPlayers') as string || '14')
+
+  // 👉 CÁLCULO DE AFORO CON MODO PRUEBA AL EDITAR
+  let maxPlayers = 14;
+  if (type === '[PRUEBA]') maxPlayers = 4;
+  else if (type === '5' || type === 'Sala') maxPlayers = 10;
+  else if (type === '7') maxPlayers = 14;
+  else if (type === '11') maxPlayers = 22;
+
+  const matchDateTime = new Date(`${dateStr}T${timeStr}`)
+  if (matchDateTime < new Date()) {
+    return { error: 'No puedes reprogramar un partido hacia el pasado.' }
+  }
 
   const { error } = await (supabase.from('matches') as any)
     .update({
@@ -307,12 +325,10 @@ export async function deleteMatch(matchId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autorizado' }
 
-  // Borramos en cascada manual por seguridad (evaluaciones, jugadores y posts asociados)
   await (supabase.from('match_evaluations') as any).delete().eq('match_id', matchId)
   await (supabase.from('match_players') as any).delete().eq('match_id', matchId)
   await (supabase.from('posts') as any).delete().eq('match_id', matchId)
   
-  // Finalmente borramos el partido
   const { error } = await (supabase.from('matches') as any).delete().eq('id', matchId)
   
   if (error) return { error: 'Error al eliminar el partido: ' + error.message }

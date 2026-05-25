@@ -14,7 +14,6 @@ export default async function MembersPage() {
   
   if (!profile || profile.is_guest) redirect('/') 
 
-  // NUEVA LÓGICA MULTICOMUNIDAD
   const { data: membershipsData } = await supabase
     .from('community_members')
     .select('community_id, role')
@@ -28,7 +27,6 @@ export default async function MembersPage() {
   const activeMembership = memberships.find(m => m.community_id === activeCommunityId)
   const isAdmin = activeMembership?.role === 'ADMIN'
 
-  // 1. Pedimos los miembros de la comunidad ACTIVA
   const { data: membersData, error } = await supabase
     .from('community_members')
     .select(`
@@ -43,24 +41,20 @@ export default async function MembersPage() {
 
   if (error) console.error("Error cargando jugadores:", error.message)
 
-  // 2. OBTENER ESTADÍSTICAS REALES PARA CADA JUGADOR
   const { data: matches } = await supabase.from('matches').select('id').eq('community_id', activeCommunityId)
-  
-  // 👉 CORRECCIÓN: Casteo explícito a un array con propiedad 'id' para evitar el error 'never'
   const matchIds = (matches as { id: string }[])?.map(m => m.id) || []
 
   let evaluations: any[] = []
   let playerRecords: any[] = []
 
   if (matchIds.length > 0) {
-    const { data: evals } = await supabase.from('match_evaluations').select('evaluated_id, rating, is_mvp').in('match_id', matchIds)
-    evaluations = (evals as any[]) || [] // Blindado
+    const { data: evals } = await supabase.from('match_evaluations').select('evaluator_id, evaluated_id, rating, is_mvp').in('match_id', matchIds)
+    evaluations = (evals as any[]) || [] 
     
     const { data: recs } = await supabase.from('match_players').select('member_id, attendance, has_paid').in('match_id', matchIds)
-    playerRecords = (recs as any[]) || [] // Blindado
+    playerRecords = (recs as any[]) || [] 
   }
 
-  // Mapa de estadísticas base
   const statsMap: Record<string, { matches: number, mvps: number, totalRating: number, ratingCount: number, lates: number, noShows: number, debts: number }> = {}
   
   ;(membersData as any[])?.forEach(m => {
@@ -68,6 +62,7 @@ export default async function MembersPage() {
   })
 
   evaluations.forEach(ev => {
+    if (ev.evaluator_id === ev.evaluated_id) return; // 👉 NUEVO: Ocultamos las autoevaluaciones del histórico global
     if (statsMap[ev.evaluated_id]) {
       if (ev.is_mvp) statsMap[ev.evaluated_id].mvps++
       statsMap[ev.evaluated_id].totalRating += ev.rating
@@ -84,13 +79,15 @@ export default async function MembersPage() {
     }
   })
 
-  // 3. Montamos el objeto final
-  const members = (membersData as any[])?.map(m => {
+  // 👉 NUEVO: Lógica de Fusión para invitados clonados
+  const finalMembersMap = new Map();
+
+  (membersData as any[])?.forEach(m => {
     const profileInfo = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
     const s = statsMap[m.profile_id]
     const avgRating = s.ratingCount > 0 ? Number((s.totalRating / s.ratingCount).toFixed(1)) : 0
 
-    return {
+    const memberObj = {
       profile_id: m.profile_id,
       role: m.role,
       alias: m.alias,
@@ -103,10 +100,38 @@ export default async function MembersPage() {
         avg_rating: avgRating,
         lates: s.lates,
         no_shows: s.noShows,
-        debts: s.debts
+        debts: s.debts,
+        _ratingCount: s.ratingCount, // Interno para poder sumar medias matemáticas después
+        _totalRating: s.totalRating
       }
     }
-  }) || []
+
+    if (memberObj.is_guest) {
+      const key = memberObj.alias.toLowerCase().trim();
+      if (finalMembersMap.has(key)) {
+        // ¡Se ha encontrado un clon! Lo fusionamos.
+        const existing = finalMembersMap.get(key);
+        existing.stats.matches += memberObj.stats.matches;
+        existing.stats.mvps += memberObj.stats.mvps;
+        existing.stats.lates += memberObj.stats.lates;
+        existing.stats.no_shows += memberObj.stats.no_shows;
+        existing.stats.debts += memberObj.stats.debts;
+        
+        // Calculamos la nueva media real
+        existing.stats._totalRating += memberObj.stats._totalRating;
+        existing.stats._ratingCount += memberObj.stats._ratingCount;
+        existing.stats.avg_rating = existing.stats._ratingCount > 0 
+          ? Number((existing.stats._totalRating / existing.stats._ratingCount).toFixed(1)) 
+          : 0;
+      } else {
+        finalMembersMap.set(key, memberObj);
+      }
+    } else {
+      finalMembersMap.set(memberObj.profile_id, memberObj);
+    }
+  });
+
+  const members = Array.from(finalMembersMap.values());
 
   members.sort((a, b) => {
     if (a.role === b.role) return a.alias.localeCompare(b.alias);

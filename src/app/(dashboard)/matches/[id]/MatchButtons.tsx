@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { joinMatch, leaveMatch, endMatch, submitVotes, updateMatch, deleteMatch } from '@/actions/matches'
-import { CheckCircle2, XCircle, Loader2, Shuffle, Link as LinkIcon, Check, Flag, Star, Trophy, X, Settings, Trash2 } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, Link as LinkIcon, Check, Flag, Star, Trophy, X, Settings, Trash2 } from 'lucide-react'
 
 export default function MatchButtons({ 
   matchId, isJoined, isFull, isAdmin, hasTeams, status, isGuest, players, currentUserId, match, hasVoted
@@ -22,9 +22,10 @@ export default function MatchButtons({
   const [showEditModal, setShowEditModal] = useState(false)
   const [updating, setUpdating] = useState(false)
 
+  const todayStr = new Date().toISOString().split('T')[0]
   const evaluablePlayers = players.filter(p => p.member_id !== currentUserId)
 
-  async function handleAction(action: 'join' | 'leave' | 'generate' | 'end') {
+  async function handleAction(action: 'join' | 'leave' | 'end') {
     setLoading(true)
     let res: any;
     if (action === 'join') res = await joinMatch(matchId)
@@ -65,7 +66,15 @@ export default function MatchButtons({
   async function handleUpdateMatch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setUpdating(true)
-    const res = await updateMatch(matchId, new FormData(e.currentTarget))
+    const formData = new FormData(e.currentTarget)
+    const dateStr = formData.get('date') as string
+    const timeStr = formData.get('time') as string
+    if (new Date(`${dateStr}T${timeStr}`) < new Date()) {
+      alert('No puedes reprogramar el partido a una fecha u hora que ya ha pasado.')
+      setUpdating(false)
+      return
+    }
+    const res = await updateMatch(matchId, formData)
     setUpdating(false)
     if (res?.error) alert(res.error)
     else { setShowEditModal(false); router.refresh(); }
@@ -92,7 +101,6 @@ export default function MatchButtons({
               </div>
             )}
 
-            {/* MODAL DE VOTACIONES ADAPTADO AL CLUB */}
             {showVotingModal && (
               <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
                 <div className="bg-white rounded-[2rem] border border-gray-200 w-full max-w-2xl overflow-hidden shadow-2xl my-8">
@@ -144,16 +152,12 @@ export default function MatchButtons({
     )
   }
 
-  // ==========================================
-  // VISTA 2: PARTIDO ABIERTO (OPEN)
-  // ==========================================
   return (
     <div className="flex flex-wrap items-center gap-3">
       {isAdmin && <button onClick={() => setShowEditModal(true)} className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold py-3 px-4 rounded-xl transition-all shadow-sm"><Settings size={18} /> Editar</button>}
       {isAdmin && <button onClick={handleDeleteMatch} disabled={loading} className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-3 px-4 rounded-xl transition-all shadow-sm">{loading ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />} Borrar</button>}
       {isAdmin && <button onClick={handleCopyGuestLink} className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold py-3 px-4 rounded-xl transition-all shadow-sm">{copied ? <Check size={18} className="text-green-600" /> : <LinkIcon size={18} />} {copied ? '¡Copiado!' : 'Enlace'}</button>}
       {isAdmin && <button onClick={() => { if (confirm('¿Finalizar el partido y abrir votaciones?')) handleAction('end') }} disabled={loading} className="flex items-center gap-2 bg-gray-900 hover:bg-black text-white font-bold py-3 px-4 rounded-xl transition-all disabled:opacity-50">{loading ? <Loader2 className="animate-spin" size={18} /> : <Flag size={18} />} Finalizar</button>}
-      {isAdmin && isFull && !hasTeams && <button onClick={() => handleAction('generate')} disabled={loading} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl transition-all disabled:opacity-50">{loading ? <Loader2 className="animate-spin" size={20} /> : <Shuffle size={20} />} Equipos</button>}
       
       {isJoined ? (
         <button onClick={() => handleAction('leave')} disabled={loading} className="flex items-center gap-2 bg-red-50 text-red-700 font-bold py-3 px-6 rounded-xl hover:bg-red-100 transition-colors disabled:opacity-50">{loading ? <Loader2 className="animate-spin" size={20} /> : <XCircle size={20} />} Darse de baja</button>
@@ -175,23 +179,20 @@ export default function MatchButtons({
                 <input type="text" name="location" defaultValue={match?.match_location} required className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-900 focus:outline-none transition-colors font-medium" style={{ '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties} onFocus={(e) => { e.target.style.borderColor = 'var(--color-primary)'; e.target.style.backgroundColor = 'white'; }} onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.backgroundColor = '#f9fafb'; }}/>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Modalidad</label>
-                  <select name="type" defaultValue={match?.match_type} className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-900 focus:outline-none transition-colors font-medium" onFocus={(e) => { e.target.style.borderColor = 'var(--color-primary)'; e.target.style.backgroundColor = 'white'; }} onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.backgroundColor = '#f9fafb'; }}>
-                    <option value="5">Fútbol 5</option><option value="7">Fútbol 7</option><option value="11">Fútbol 11</option><option value="Sala">Fútbol Sala</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Aforo Máximo</label>
-                  <input type="number" name="maxPlayers" defaultValue={match?.maxPlayers} required className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-900 focus:outline-none transition-colors font-medium" onFocus={(e) => { e.target.style.borderColor = 'var(--color-primary)'; e.target.style.backgroundColor = 'white'; }} onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.backgroundColor = '#f9fafb'; }}/>
-                </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Modalidad</label>
+                <select name="type" defaultValue={match?.match_type} className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-900 focus:outline-none transition-colors font-medium" onFocus={(e) => { e.target.style.borderColor = 'var(--color-primary)'; e.target.style.backgroundColor = 'white'; }} onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.backgroundColor = '#f9fafb'; }}>
+                  <option value="[PRUEBA]">🧪 [PRUEBA] Demo (2v2)</option>
+                  <option value="7">Fútbol 7</option>
+                  <option value="11">Fútbol 11</option>
+                  <option value="Sala">Fútbol Sala</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">Fecha</label>
-                  <input type="date" name="date" defaultValue={match?.match_date} required className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-900 focus:outline-none transition-colors font-medium" onFocus={(e) => { e.target.style.borderColor = 'var(--color-primary)'; e.target.style.backgroundColor = 'white'; }} onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.backgroundColor = '#f9fafb'; }}/>
+                  <input type="date" name="date" defaultValue={match?.match_date} required min={todayStr} className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 bg-gray-50 text-gray-900 focus:outline-none transition-colors font-medium" onFocus={(e) => { e.target.style.borderColor = 'var(--color-primary)'; e.target.style.backgroundColor = 'white'; }} onBlur={(e) => { e.target.style.borderColor = '#e5e7eb'; e.target.style.backgroundColor = '#f9fafb'; }}/>
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-2">Hora</label>
